@@ -1,0 +1,20 @@
+all: test
+
+CXX = icpc
+OPTS = -O3 -DNDEBUG -march=native -mtune=native -ffast-math -fopenmp
+EIGEN_INC = -I /home/nfs_data/zhanggh/mytaco/learn-taco/zghshared/eigen-3.4.0
+
+test: test.o Makefile
+	g++ -o test ${EIGEN_INC} test.o -liomp5 -lpthread -lm -ldl
+
+test.o: main.cpp ./utils/lib.h Makefile
+	g++ -o test.o -c -fpermissive -std=c++17 ${EIGEN_INC} main.cpp
+
+.PHONY: clean run
+
+clean:
+	rm -f test
+	rm -f *.o
+
+run:
+	./test
