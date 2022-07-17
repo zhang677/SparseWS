@@ -112,22 +112,23 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-const int w_psize = 1;
+
 struct w_pair{
+  int32_t w_psize;
   int32_t pos[1];
   float val;
 } ;
 // cmp function is generated when knowing the dimension of pos in w_pair
 int esc_cmp(const void *b, const void *a) {
-  const int psize = w_psize;
+  const int psize = ((w_pair*)b)->w_psize;
   for (int i=0; i<psize; i++) {
     if (((w_pair*)b)->pos[i] == ((w_pair*)a)->pos[i]) continue;
     return (((w_pair*)b)->pos[i] - ((w_pair*)a)->pos[i]);
   }
   return (((w_pair*)b)->pos[psize-1] - ((w_pair*)a)->pos[psize-1]);
 }
-bool pos_equal(const w_pair *a, const w_pair *b, const int32_t size) {
-  for (int i=0; i<size; i++) {
+bool pos_equal(const w_pair *a, const w_pair *b) {
+  for (int i=0; i<a->w_psize; i++) {
     if(a->pos[i]!=b->pos[i]) return false;
   }
   return true;
@@ -202,6 +203,7 @@ void ESC_assemble_compute_v1(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *
     for (int32_t jA = A2_pos[i]; jA < A2_pos[(i+1)]; jA++) {
       int32_t j = A2_crd[jA];
       for (int32_t kB = B2_pos[j]; kB < B2_pos[(j+1)]; kB++) {
+        w[iw].w_psize = 1;
         w[iw].pos[0] = B2_crd[kB]; 
         w[iw].val = A_vals[jA] * B_vals[kB];
         iw ++;
@@ -211,7 +213,7 @@ void ESC_assemble_compute_v1(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *
     w_pair current = w[0];
     int32_t pC2 = C2_pos[i];
     for (int32_t w_index_locator = 0; w_index_locator < w_size; w_index_locator++) {
-      if(!pos_equal(&w[w_index_locator],&current,1)){
+      if(!pos_equal(&w[w_index_locator],&current)){
         current = w[w_index_locator];
         pC2 ++;
       }
@@ -226,6 +228,7 @@ void ESC_assemble_compute_v1(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *
   C->vals = (float*)C_vals;
 
 }
+
 
 
 
