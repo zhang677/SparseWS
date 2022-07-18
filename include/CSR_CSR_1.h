@@ -117,7 +117,7 @@ struct w_pair{
   int32_t w_psize;
   int32_t pos[1];
   float val;
-} ;
+};
 // cmp function is generated when knowing the dimension of pos in w_pair
 int esc_cmp(const void *b, const void *a) {
   const int psize = ((w_pair*)b)->w_psize;
@@ -151,7 +151,7 @@ void ESC_assemble_compute_v1(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *
 
   // With assemble
   int32_t* restrict C2_nnz_upper_bound = (int32_t*)malloc(sizeof(int32_t) * A1_dimension);
-  int32_t* restrict C2_nnz = (int32_t*)malloc(sizeof(int32_t)*A1_dimension);
+  int32_t* restrict C2_nnz = (int32_t*)malloc(sizeof(int32_t) * A1_dimension);
   int32_t* qw_index_list = (int32_t*)malloc(sizeof(int32_t) * B2_dimension);
   bool* restrict qw_already_set = (bool*)malloc(sizeof(bool) * B2_dimension);
 
