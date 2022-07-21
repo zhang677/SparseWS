@@ -110,6 +110,84 @@ int taco_binarySearchBefore(int *array, int arrayStart, int arrayEnd, int target
   }
   return lowerBound;
 }
+/*
+ * The `pack` functions convert coordinate and value arrays in COO format,
+ * with nonzeros sorted lexicographically by their coordinates, to the
+ * specified input format.
+ *
+ * The `unpack` function converts the specified output format to coordinate
+ * and value arrays in COO format.
+ *
+ * For both, the `_COO_pos` arrays contain two elements, where the first is 0
+ * and the second is the number of nonzeros in the tensor.
+ */
+
+int pack_C(taco_tensor_t *C, int* C_COO1_pos, int32_t* C_COO1_crd, int32_t* C_COO2_crd, float* C_COO_vals) {
+  int C1_dimension = (int)(C->dimensions[0]);
+  int* restrict C2_pos = (int*)(C->indices[1][0]);
+  int* restrict C2_crd = (int*)(C->indices[1][1]);
+  float* restrict C_vals = (float*)(C->vals);
+
+  C2_pos = (int32_t*)malloc(sizeof(int32_t) * (C1_dimension + 1));
+  C2_pos[0] = 0;
+  for (int32_t pC2 = 1; pC2 < (C1_dimension + 1); pC2++) {
+    C2_pos[pC2] = 0;
+  }
+  int32_t C2_crd_size = 1048576;
+  C2_crd = (int32_t*)malloc(sizeof(int32_t) * C2_crd_size);
+  int32_t jC = 0;
+  int32_t C_capacity = 1048576;
+  C_vals = (float*)malloc(sizeof(float) * C_capacity);
+
+  int32_t iC_COO = C_COO1_pos[0];
+  int32_t pC_COO1_end = C_COO1_pos[1];
+
+  while (iC_COO < pC_COO1_end) {
+    int32_t i = C_COO1_crd[iC_COO];
+    int32_t C_COO1_segend = iC_COO + 1;
+    while (C_COO1_segend < pC_COO1_end && C_COO1_crd[C_COO1_segend] == i) {
+      C_COO1_segend++;
+    }
+    int32_t pC2_begin = jC;
+
+    int32_t jC_COO = iC_COO;
+
+    while (jC_COO < C_COO1_segend) {
+      int32_t j = C_COO2_crd[jC_COO];
+      float C_COO_val = C_COO_vals[jC_COO];
+      jC_COO++;
+      while (jC_COO < C_COO1_segend && C_COO2_crd[jC_COO] == j) {
+        C_COO_val += C_COO_vals[jC_COO];
+        jC_COO++;
+      }
+      if (C_capacity <= jC) {
+        C_vals = (float*)realloc(C_vals, sizeof(float) * (C_capacity * 2));
+        C_capacity *= 2;
+      }
+      C_vals[jC] = C_COO_val;
+      if (C2_crd_size <= jC) {
+        C2_crd = (int32_t*)realloc(C2_crd, sizeof(int32_t) * (C2_crd_size * 2));
+        C2_crd_size *= 2;
+      }
+      C2_crd[jC] = j;
+      jC++;
+    }
+
+    C2_pos[i + 1] = jC - pC2_begin;
+    iC_COO = C_COO1_segend;
+  }
+
+  int32_t csC2 = 0;
+  for (int32_t pC20 = 1; pC20 < (C1_dimension + 1); pC20++) {
+    csC2 += C2_pos[pC20];
+    C2_pos[pC20] = csC2;
+  }
+
+  C->indices[1][0] = (int32_t*)(C2_pos);
+  C->indices[1][1] = (int32_t*)(C2_crd);
+  C->vals = (float*)C_vals;
+  return 0;
+}
 
 EigenRowMajor gen_row_major_matrix(int rows, int cols) {
   return EigenRowMajor::Ones(rows, cols);
