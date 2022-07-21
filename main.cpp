@@ -1,5 +1,5 @@
-//#include "include/CSR_CSC_0.h"
-#include "include/CSR_CSC_1.h"
+//#include "seperate/CSR_CSC_0.h"
+#include "seperate/CSR_CSR_4.h"
 //#include "include/CSR_CSR_1.h"
 //#include "include/DCSR_CSR_1.h"
 //#include "include/DCSR_DCSC_0.h"
@@ -10,6 +10,6 @@
 using namespace std;
 int main() {
     string filename = "./data/test.mtx";
-    CSR_CSC_1(filename, filename);
+    CSR_CSR_4(filename, filename);
     return 0;    
 }

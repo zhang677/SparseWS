@@ -366,5 +366,28 @@ void print_taco_tensor_CC(taco_tensor_t* t) {
     cout<<"]"<<endl;        
 
 }
+/*
+void SpGEMM_baseline(const string& A_name, const string& B_name, taco_tensor_t* C) {
+  vector<int> A_indptr;
+  vector<int> A_indices;
+  vector<float> A_vals;
+  vector<int> B_indptr;
+  vector<int> B_indices;
+  vector<float> B_vals;
+  vector<int> id_buffer;
+  vector<int> C_indptr;
+  vector<int> C_indices;
+  vector<float> C_vals;
+  int nrow,ncol,k,nnz;
+  read_mtx_csr(A_name.data(), nrow, k, nnz, A_indptr, A_indices, id_buffer, A_vals);
+  read_mtx_csr(B_name.data(), k, ncol, nnz, B_indptr, B_indices, id_buffer, B_vals);
+  vector<int> Cb_indptr(C->indices[1][0], C->indices[1][0] + nrow + 1);
+  vector<int> Cb_indices(C->indices[1][1],C->indices[1][1] + C->indices[1][0][nrow]);
+  vector<float> Cb_vals(C->vals, C->vals + C->indices[1][0][nrow]);
+  for(int i=0; i<nrow; i++){
+
+  }
+}
+*/
 
 #endif

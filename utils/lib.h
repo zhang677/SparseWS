@@ -378,4 +378,13 @@ void print_csr_vector(taco_tensor_t* A) {
 
 }
 
+template <typename Type>
+void print_array(Type* array, int len) {
+  std::cout<<"[";
+  for (int i=0; i<len; i++) {
+    std::cout<<array[i]<<",";
+  }
+  std::cout<<"]"<<std::endl;
+}
+
 #endif
