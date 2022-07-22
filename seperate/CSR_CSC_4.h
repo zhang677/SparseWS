@@ -52,7 +52,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
         int32_t j = TACO_MIN(jA0, jB0);
         if (jA0 == j && jB0 == j) {
             w_accumulator[w_accumulator_size].pos[0] = i;
-            w_accumulator[w_accumulator_size].pos[1] = k;
+            w_accumulator[w_accumulator_size].pos[1] = k; //pos[2] => coord
             w_accumulator[w_accumulator_size].val = A_vals[jA] * B_vals[jB];
             w_accumulator_size ++;
             if (w_accumulator_size >= w_accumulator_capacity) {

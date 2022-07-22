@@ -45,7 +45,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
         int32_t j = A2_crd[jA];
         for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
             int32_t k = B2_crd[kB];
-            w_accumulator[w_accumulator_size].pos[0] = i;
+            w_accumulator[w_accumulator_size].pos[0] = i;// pos => coord
             w_accumulator[w_accumulator_size].pos[1] = k;
             w_accumulator[w_accumulator_size].val = A_vals[jA] * B_vals[kB];
             w_accumulator_size ++;
