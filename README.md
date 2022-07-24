@@ -38,4 +38,4 @@ assemble(forall(qi, forall(qk, where(C2_nnz(qi) += cast<int32_t>(qtqjC), forall(
 
 ## Development State
 - [ ] Method 4 (coordinate) needs merge sort
-- [ ] Method 4 (hash) needs wspace struct in a more modular way
+- [ ] Method 5 (hash) needs wspace struct in a more modular way
