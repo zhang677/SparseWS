@@ -99,7 +99,7 @@ void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
     while ((curr_pos < nnz) && (std::get<0>(coords[curr_pos]) == row)) {
       csr_indices_buffer.push_back(std::get<1>(coords[curr_pos]));
       coo_rowind_buffer.push_back(std::get<0>(coords[curr_pos]));
-      csr_value_buffer.push_back((float)(std::rand() % 10) / 10);
+      csr_value_buffer.push_back((float)(std::rand() % 10 + 1) / 10);
       curr_pos++;
     }
     // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
@@ -226,7 +226,7 @@ void read_mtx_csc(const char *filename, int &nrow, int &ncol, int &nnz,
     while ((curr_pos < nnz) && (std::get<0>(coords[curr_pos]) == col)) {
       csc_indices_buffer.push_back(std::get<1>(coords[curr_pos]));
       coo_colind_buffer.push_back(std::get<0>(coords[curr_pos]));
-      csc_value_buffer.push_back((float)(std::rand() % 10) / 10);
+      csc_value_buffer.push_back((float)(std::rand() % 10 + 1) / 10);
       curr_pos++;
     }
     // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
