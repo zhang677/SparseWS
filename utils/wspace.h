@@ -1,5 +1,9 @@
 #include "dataloader.h"
 #include "lib.h"
+
+#ifndef WSPACE_
+#define WSPACE_
+
 using namespace std;
 const int w_order = 2;
 const int HASH_SCAL = 1;
@@ -198,3 +202,5 @@ int Sort(void * array, size_t size, bool rev) {
   qsort(array, size, sizeof(wspace), esc_cmp);
   return size;
 }
+
+#endif
