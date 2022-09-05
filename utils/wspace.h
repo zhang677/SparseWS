@@ -12,8 +12,11 @@ struct wspace {
   float val;
 };
 // Initialize wspace
-void init_wspace(wspace* w) {
-    w->crd[0] = -1;
+bool init_wspace(wspace* w, int begin, int end) {
+  for(int i = begin; i < end; i++){
+    w[i].crd[0] = -1;
+  }
+  return true;
     //for (int i=0; i<w_order; i++) {
     //    w->crd[i] = -1;
     //}
@@ -49,8 +52,9 @@ void print_coo(int32_t** C_COO_crd, float* C_COO_vals,const int len) {
 }
 int Enlarge(int32_t** C_COO_crd, float** C_COO_vals, int C_COO_capacity) {
   C_COO_capacity = C_COO_capacity * 2;
-  C_COO_crd[0] = (int32_t*)realloc(C_COO_crd[0], sizeof(int32_t) * C_COO_capacity);
-  C_COO_crd[1] = (int32_t*)realloc(C_COO_crd[1], sizeof(int32_t) * C_COO_capacity);
+  for (int i = 0; i<w_order; i++) {
+    C_COO_crd[i] = (int32_t*)realloc(C_COO_crd[i], sizeof(int32_t) * C_COO_capacity);
+  }
   *C_COO_vals = (float*)realloc(*C_COO_vals, sizeof(float) * C_COO_capacity);
   return C_COO_capacity;
 }
@@ -125,62 +129,71 @@ int Merge(int32_t** COO_crd, float* COO_vals, int32_t COO_size, wspace* accumula
   else {
     if (COO_size == 0) {
       for (int i=0; i<accumulator_size; i++) {
-        COO_crd[0][i] = accumulator[i].crd[0];
-        COO_crd[1][i] = accumulator[i].crd[1];
+        for (int j=0; j<w_order; j++) {
+          COO_crd[j][i] = accumulator[i].crd[j];
+        }
         COO_vals[i] = accumulator[i].val;
       }
       return accumulator_size;
     }
     int32_t* tmp_COO_crd[2];
     float* tmp_COO_vals;
-    tmp_COO_crd[0] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
-    tmp_COO_crd[1] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
+    for (int i=0; i<w_order; i++) {
+      tmp_COO_crd[i] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
+    }
     tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + COO_size));
     int accumulator_pointer = 0;
     int content_pointer = 0;
     int target_pointer = 0;
     wspace tmp_con;
     while(accumulator_pointer < accumulator_size && content_pointer < COO_size) {
-      tmp_con.crd[0] = COO_crd[0][content_pointer];
-      tmp_con.crd[1] = COO_crd[1][content_pointer];
+      for (int i=0; i<w_order; i++) {
+        tmp_con.crd[i] = COO_crd[i][content_pointer];
+      }
       if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) == 0) {
-        tmp_COO_crd[0][target_pointer] = accumulator[accumulator_pointer].crd[0];
-        tmp_COO_crd[1][target_pointer] = accumulator[accumulator_pointer].crd[1];
+        for (int i=0; i<w_order; i++) {
+          tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
+        }
         tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val + COO_vals[content_pointer];
         accumulator_pointer ++;
         content_pointer ++;
         target_pointer ++;
       } else if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) < 0) {
-        tmp_COO_crd[0][target_pointer] = accumulator[accumulator_pointer].crd[0];
-        tmp_COO_crd[1][target_pointer] = accumulator[accumulator_pointer].crd[1];
+        for (int i=0; i<w_order; i++) {
+          tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
+        }
         tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
         accumulator_pointer ++;
         target_pointer ++;
       } else {
-        tmp_COO_crd[0][target_pointer] = COO_crd[0][content_pointer];
-        tmp_COO_crd[1][target_pointer] = COO_crd[1][content_pointer];
+        for (int i=0; i<w_order; i++) {
+          tmp_COO_crd[i][target_pointer] = COO_crd[i][content_pointer];
+        }
         tmp_COO_vals[target_pointer] = COO_vals[content_pointer];
         content_pointer ++;
         target_pointer ++;
       }
     }
     while(accumulator_pointer<accumulator_size) {
-      tmp_COO_crd[0][target_pointer] = accumulator[accumulator_pointer].crd[0];
-      tmp_COO_crd[1][target_pointer] = accumulator[accumulator_pointer].crd[1];
+      for (int i=0; i<w_order; i++) {
+        tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
+      } 
       tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
       accumulator_pointer ++;
       target_pointer ++;
     }
     while(content_pointer<COO_size) {
-      tmp_COO_crd[0][target_pointer] = COO_crd[0][content_pointer];
-      tmp_COO_crd[1][target_pointer] = COO_crd[1][content_pointer];
+      for (int i=0; i<w_order; i++) {
+          tmp_COO_crd[i][target_pointer] = COO_crd[i][content_pointer];
+      }
       tmp_COO_vals[target_pointer] = COO_vals[content_pointer];
       content_pointer ++;
       target_pointer ++;
     }
     for (int i = 0; i < target_pointer; i++) {
-      COO_crd[0][i] = tmp_COO_crd[0][i];
-      COO_crd[1][i] = tmp_COO_crd[1][i];
+      for (int j = 0; j < w_order; j++) {
+        COO_crd[j][i] = tmp_COO_crd[j][i];
+      }
       COO_vals[i] = tmp_COO_vals[i];
     }
     free(tmp_COO_crd[0]);

@@ -10,7 +10,7 @@ int hash_func(const int crd, const int tsize) {
 int32_t TryInsert(bool* insertFail, wspace* accumulator, int32_t accumulator_size, int32_t accumulator_capacity, int32_t* crds, float val) {
   int hashkey = hash_func(crds[0] + crds[1], accumulator_capacity);
   int step = 0;
-  int bmap = 0;
+  int bmap = 0; // The length depends on hash table size
   wspace tmp;
   tmp.crd[0] = crds[0];
   tmp.crd[1] = crds[1];
@@ -62,9 +62,7 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   C_COO_vals = (float*)malloc(sizeof(float) * C_COO_capacity);
   bool insertFail;
   // Initialize hash key
-  for (int32_t i = 0; i<w_accumulator_capacity; i++) {
-    init_wspace(&w_accumulator[i]);
-  }
+  init_wspace(w_accumulator,0,w_accumulator_capacity);
 
   for (int32_t i = 0; i < A1_dimension; i++) {
     for (int32_t jA = A2_pos[i]; jA < A2_pos[i+1]; jA++) {
@@ -87,9 +85,7 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
           // Clear
           w_accumulator_size = 0;
           // Clear the hash array
-          for (int32_t wi = 0; wi<w_accumulator_capacity; wi++) {
-            init_wspace(&w_accumulator[wi]);
-          }
+          init_wspace(w_accumulator,0,w_accumulator_capacity);
           // Insert the wspace that conflicts
           w_accumulator_size = TryInsert(&insertFail, w_accumulator, w_accumulator_size, w_accumulator_capacity, C_crds, A_vals[jA] * B_vals[kB]);
         }
