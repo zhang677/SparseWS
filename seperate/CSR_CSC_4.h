@@ -116,7 +116,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSC_4(const string& A_name, const string& B_name) {
+void CSR_CSC_4(const string& A_name, const string& B_name, taco_tensor_t* C, bool print = false) {
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -128,10 +128,11 @@ void CSR_CSC_4(const string& A_name, const string& B_name) {
     taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
     read_mtx_csc(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{1,0});
-    taco_tensor_t C;
-    init_taco_tensor_DC(&C, nrow, ncol, {0,1});
-    compute(&C,&A,&B);
-    print_taco_tensor_DC(&A);
-    print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(&C);
+    init_taco_tensor_DC(C, nrow, ncol, {0,1});
+    compute(C,&A,&B);
+    if (print) {
+      print_taco_tensor_DC(&A);
+      print_taco_tensor_DC(&B);
+      print_taco_tensor_DC(C);
+    }
 }

@@ -169,7 +169,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   }
   int32_t C2_crd_size = 1048576;
   C2_crd = (int32_t*)malloc(sizeof(int32_t) * C2_crd_size);
-  int32_t jC = 0;
+  int32_t kC = 0;
   int32_t C_capacity = 1048576;
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
@@ -182,32 +182,24 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
     while (w1_segend < pw1_end && w1_crd[w1_segend] == i) {
       w1_segend++;
     }
-    int32_t pC2_begin = jC;
+    int32_t pC2_begin = kC;
 
-    int32_t jw = iw;
-
-    while (jw < w1_segend) {
-      int32_t j = w2_crd[jw];
-      float w_val = w_vals[jw];
-      jw++;
-      while (jw < w1_segend && w2_crd[jw] == j) {
-        w_val += w_vals[jw];
-        jw++;
-      }
-      if (C_capacity <= jC) {
+    for (int32_t kw = iw; kw < w1_segend; kw++) {
+      int32_t k0 = w2_crd[kw];
+      if (C_capacity <= kC) {
         C_vals = (float*)realloc(C_vals, sizeof(float) * (C_capacity * 2));
         C_capacity *= 2;
       }
-      C_vals[jC] = w_val;
-      if (C2_crd_size <= jC) {
+      C_vals[kC] = w_vals[kw];
+      if (C2_crd_size <= kC) {
         C2_crd = (int32_t*)realloc(C2_crd, sizeof(int32_t) * (C2_crd_size * 2));
         C2_crd_size *= 2;
       }
-      C2_crd[jC] = j;
-      jC++;
+      C2_crd[kC] = k0;
+      kC++;
     }
 
-    C2_pos[i + 1] = jC - pC2_begin;
+    C2_pos[i + 1] = kC - pC2_begin;
     iw = w1_segend;
   }
 
@@ -223,7 +215,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSR_4(const string& A_name, const string& B_name) {
+void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C) {
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -235,10 +227,9 @@ void CSR_CSR_4(const string& A_name, const string& B_name) {
     taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
     read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-    taco_tensor_t C;
-    init_taco_tensor_DC(&C, nrow, ncol, {0,1});
-    compute_coo(&C,&A,&B);
+    init_taco_tensor_DC(C, nrow, ncol, {0,1});
+    compute_coo(C,&A,&B);
     print_taco_tensor_DC(&A);
     print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(&C);
+    print_taco_tensor_DC(C);
 }

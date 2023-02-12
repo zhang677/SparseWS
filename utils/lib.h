@@ -1,6 +1,5 @@
 #ifndef LIB_H
 #define LIB_H
-#define _OPENMP 0
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
@@ -19,6 +18,7 @@
 #include <cmath>
 #include <limits>
 #include <Eigen/Sparse>
+#include <omp.h>
 
 #define TACO_MIN(_a,_b) ((_a) < (_b) ? (_a) : (_b))
 #define TACO_MAX(_a,_b) ((_a) > (_b) ? (_a) : (_b))
@@ -40,10 +40,9 @@ struct taco_tensor_t {
 };
 
 
-int omp_get_thread_num() { return 0; }
-int omp_get_max_threads() { return 1; }
 
 typedef Eigen::SparseMatrix<float,Eigen::RowMajor,int> EigenCSR;
+typedef Eigen::SparseMatrix<float,Eigen::ColMajor,int> EigenCSC;
 typedef Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> EigenRowMajor;
 typedef Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::ColMajor> EigenColMajor;
 typedef Eigen::Matrix<float,Eigen::Dynamic,1> EigenVector;
@@ -222,6 +221,29 @@ EigenCSR to_eigen_csr(const COO matrix, int shift = 0) {
   return dst;
 }
 
+EigenCSR to_eigen_csr(int nrow, int ncol, int nnz, std::vector<int> &outer_buffer, std::vector<int> &inner_buffer, std::vector<float> &vals) {
+  EigenCSR dst(nrow, ncol);
+  std::vector<Eigen::Triplet<float>> tripletList;
+  tripletList.reserve(nnz);
+  for (size_t i = 0; i < nnz; i++) {
+    tripletList.push_back({outer_buffer[i], inner_buffer[i], vals[i]});
+  }
+  dst.setFromTriplets(tripletList.begin(), tripletList.end());
+  dst.makeCompressed();
+  return dst;
+}
+
+EigenCSC to_eigen_csc(int &nrow, int &ncol, int &nnz, std::vector<int> &outer_buffer, std::vector<int> &inner_buffer, std::vector<float> &vals) {
+  EigenCSC dst(nrow, ncol);
+  std::vector<Eigen::Triplet<float>> tripletList;
+  tripletList.reserve(nnz);
+  for (size_t i = 0; i < nnz; i++) {
+    tripletList.push_back({outer_buffer[i], inner_buffer[i], vals[i]});
+  }
+  dst.setFromTriplets(tripletList.begin(), tripletList.end());
+  dst.makeCompressed();
+  return dst;
+}
 
 taco_tensor_t to_taco_tensor(const EigenVector& vector) {
   taco_tensor_t vt;
@@ -300,31 +322,19 @@ taco_tensor_t to_taco_tensor(const EigenCSR& matrix) {
   return csrt;
 }
 
-float compare_array_my(const float *x, const float *y, const size_t N){
-  float thres = 0.001;
-  float count = 0.0;
-  float col = 0;
-  for (int i=0;i<N;i++){
-    col = i%128;
-    if(abs(x[i]-y[i])>thres){
-       printf("col: %.0f, x: %.3f, y: %.3f\n",col,x[i],y[i]);
-       count ++ ;
+template <typename Type>
+void compare_array(Type* A, Type* B, int len, float thres = 0.0001) {
+  int count = 0;
+  for (int i = 0; i < len; i++) {
+    if (abs(A[i] - B[i]) > thres) {
+      count++;
+      std::cout<<"id: "<< i << "," << "A_val: " << A[i] << "B_val: " << B[i] << std::endl; 
     }
-    if(count>10000)
+    if (count > 10) {
       break;
+    }
   }
-  return count;
-}
-float compare_vectors(const taco_tensor_t a, const taco_tensor_t b) {
-  assert(a.dimensions[0] == b.dimensions[0]);
-  return compare_array_my((float*)a.vals, (float*)b.vals, a.dimensions[0]);
-}
-
-double compare_matrices_float(const taco_tensor_t a, const taco_tensor_t b) {
-  assert(a.dimensions[0] == b.dimensions[0]);
-  assert(a.dimensions[1] == b.dimensions[1]);
-  const size_t N = a.dimensions[0] * a.dimensions[1];
-  return compare_array_my((float*)a.vals, (float*)b.vals, N);
+  std::cout << "Correct!" <<std::endl;
 }
 
 void fill_random(float array[], int size) {
