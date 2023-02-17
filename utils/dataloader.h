@@ -300,29 +300,14 @@ void print_taco_tensor_CC(taco_tensor_t* t) {
 
 }
 
-
-/*
-void SpGEMM_baseline(const string& A_name, const string& B_name, taco_tensor_t* C) {
-  vector<int> A_indptr;
-  vector<int> A_indices;
-  vector<float> A_vals;
-  vector<int> B_indptr;
-  vector<int> B_indices;
-  vector<float> B_vals;
-  vector<int> id_buffer;
-  vector<int> C_indptr;
-  vector<int> C_indices;
-  vector<float> C_vals;
-  int nrow,ncol,k,nnz;
-  read_mtx_csr(A_name.data(), nrow, k, nnz, A_indptr, A_indices, id_buffer, A_vals);
-  read_mtx_csr(B_name.data(), k, ncol, nnz, B_indptr, B_indices, id_buffer, B_vals);
-  vector<int> Cb_indptr(C->indices[1][0], C->indices[1][0] + nrow + 1);
-  vector<int> Cb_indices(C->indices[1][1],C->indices[1][1] + C->indices[1][0][nrow]);
-  vector<float> Cb_vals(C->vals, C->vals + C->indices[1][0][nrow]);
-  for(int i=0; i<nrow; i++){
-
-  }
+void check_csr_taco_eigen(taco_tensor_t& C, EigenCSR& C_true){
+  int row = C_true.outerSize();
+  int nnz = C_true.outerIndexPtr()[row];
+  cout << (C.indices[0][0][0] == row) << endl;
+  cout << (C.indices[1][0][C.indices[0][0][0]] == nnz) << endl;
+  compare_array<int>(C.indices[1][0], C_true.outerIndexPtr(), row + 1);
+  compare_array<int>(C.indices[1][1], C_true.innerIndexPtr(), nnz);
+  compare_array<float>(C.vals, C_true.valuePtr(), nnz);
 }
-*/
 
 #endif
