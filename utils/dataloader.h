@@ -303,8 +303,8 @@ void print_taco_tensor_CC(taco_tensor_t* t) {
 void check_csr_taco_eigen(taco_tensor_t& C, EigenCSR& C_true){
   int row = C_true.outerSize();
   int nnz = C_true.outerIndexPtr()[row];
-  cout << (C.indices[0][0][0] == row) << endl;
-  cout << (C.indices[1][0][C.indices[0][0][0]] == nnz) << endl;
+  cout << "row: " << (C.indices[0][0][0] == row ? "True" : "False") << endl;
+  cout << "nnz: " << (C.indices[1][0][C.indices[0][0][0]] == nnz ? "True": "False") << endl;
   compare_array<int>(C.indices[1][0], C_true.outerIndexPtr(), row + 1);
   compare_array<int>(C.indices[1][1], C_true.innerIndexPtr(), nnz);
   compare_array<float>(C.vals, C_true.valuePtr(), nnz);

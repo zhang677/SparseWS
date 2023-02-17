@@ -3,7 +3,7 @@
 #include "../utils/wspace.h"
 
 int32_t TryInsert_coord(bool* insertFail, wspace* accumulator, int32_t accumulator_size, int32_t accumulator_capacity, int32_t* crds, float val) {
-  if (accumulator_size >= accumulator_capacity) {
+  if (accumulator_size == accumulator_capacity) {
     *insertFail = true;
     return Sort(accumulator, accumulator_capacity, false);
   } else {
@@ -120,12 +120,12 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   int32_t* w_point = 0;
   w_point = (int32_t*)malloc(sizeof(int32_t) * 2);
   for (int32_t i = 0; i < A1_dimension; i++) {
-    w_point[0] = i;
     for (int32_t jA = A2_pos[i]; jA < A2_pos[i+1]; jA++) {
       int32_t j = A2_crd[jA];
       for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
         int32_t k = B2_crd[kB];
-        w_point[1] = k;
+        w_point[0] = k;
+        w_point[1] = i; // Transpose
         // Try to insert to the accumulator array
         w_accumulator_size = TryInsert_coord(w_insertFail,w_accumulator,w_accumulator_size,w_accumulator_capacity,w_point,A_vals[jA] * B_vals[kB]);
         if (w_insertFail[0]) {
@@ -166,7 +166,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C) {
+void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, bool print = false) {
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -180,7 +180,9 @@ void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C) {
     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
     init_taco_tensor_DC(C, nrow, ncol, {0,1});
     compute_coo(C,&A,&B);
-    print_taco_tensor_DC(&A);
-    print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(C);
+    if (print) {
+      print_taco_tensor_DC(&A);
+      print_taco_tensor_DC(&B);
+      print_taco_tensor_DC(C);
+    }
 }

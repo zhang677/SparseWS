@@ -110,7 +110,7 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
 }
 
 
-void CSR_CSR_5(const string& A_name, const string& B_name) {
+void CSR_CSR_5(const string& A_name, const string& B_name, taco_tensor_t* C) {
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -122,10 +122,9 @@ void CSR_CSR_5(const string& A_name, const string& B_name) {
     taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
     read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-    taco_tensor_t C;
-    init_taco_tensor_DC(&C, nrow, ncol, {0,1});
-    compute_coo_rev(&C,&A,&B);
+    init_taco_tensor_DC(C, nrow, ncol, {0,1});
+    compute_coo_rev(C,&A,&B);
     print_taco_tensor_DC(&A);
     print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(&C);
+    print_taco_tensor_DC(C);
 }
