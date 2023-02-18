@@ -17,74 +17,93 @@ int32_t TryInsert_coord(bool* insertFail, wspace* accumulator, int32_t accumulat
 }
 
 int Merge_coord(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, wspace* accumulator, int32_t accumulator_size){
-  if (COO_size == 0) {
-      for (int i=0; i<accumulator_size; i++) {
-        COO1_crd[i] = accumulator[i].crd[0];
-        COO2_crd[i] = accumulator[i].crd[1];
-        COO_vals[i] = accumulator[i].val;
-      }
-      return accumulator_size;
-    }
-    int32_t* tmp_COO_crd[2];
-    float* tmp_COO_vals;
-    for (int i=0; i<w_order; i++) {
-      tmp_COO_crd[i] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
-    }
-    tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + COO_size));
-    int accumulator_pointer = 0;
-    int content_pointer = 0;
-    int target_pointer = 0;
-    wspace tmp_con;
-    while(accumulator_pointer < accumulator_size && content_pointer < COO_size) {
-      tmp_con.crd[0] = COO1_crd[content_pointer];
-      tmp_con.crd[1] = COO2_crd[content_pointer];
-      if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) == 0) {
-        for (int i=0; i<w_order; i++) {
-          tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
-        }
-        tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val + COO_vals[content_pointer];
-        accumulator_pointer ++;
-        content_pointer ++;
-        target_pointer ++;
-      } else if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) < 0) {
-        for (int i=0; i<w_order; i++) {
-          tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
-        }
-        tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
-        accumulator_pointer ++;
-        target_pointer ++;
+  // Prefix sum (HashTable doesn't need this)
+  int p1 = 0;
+  int p2 = 1;
+  while (p2 < accumulator_size) {
+    if (esc_cmp(&accumulator[p2], &accumulator[p1]) == 0) {
+      accumulator[p1].val += accumulator[p2].val;
+    } else {
+      if (p2 - p1 > 1) {
+        p1++;
+        accumulator[p1].crd[0] = accumulator[p2].crd[0];
+        accumulator[p1].crd[1] = accumulator[p2].crd[1];
+        accumulator[p1].val = accumulator[p2].val;
       } else {
-        tmp_COO_crd[0][target_pointer] = COO1_crd[content_pointer];
-        tmp_COO_crd[1][target_pointer] = COO2_crd[content_pointer];
-        tmp_COO_vals[target_pointer] = COO_vals[content_pointer];
-        content_pointer ++;
-        target_pointer ++;
+        p1++;
       }
     }
-    while(accumulator_pointer<accumulator_size) {
+    p2++;
+  }
+  accumulator_size = p1 + 1; 
+  if (COO_size == 0) {
+    for (int i=0; i<accumulator_size; i++) {
+      COO1_crd[i] = accumulator[i].crd[0];
+      COO2_crd[i] = accumulator[i].crd[1];
+      COO_vals[i] = accumulator[i].val;
+    }
+    return accumulator_size;
+  }
+  int32_t* tmp_COO_crd[2];
+  float* tmp_COO_vals;
+  for (int i=0; i<w_order; i++) {
+    tmp_COO_crd[i] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
+  }
+  tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + COO_size));
+  int accumulator_pointer = 0;
+  int content_pointer = 0;
+  int target_pointer = 0;
+  wspace tmp_con;
+  while(accumulator_pointer < accumulator_size && content_pointer < COO_size) {
+    tmp_con.crd[0] = COO1_crd[content_pointer];
+    tmp_con.crd[1] = COO2_crd[content_pointer];
+    if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) == 0) {
       for (int i=0; i<w_order; i++) {
         tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
-      } 
+      }
+      tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val + COO_vals[content_pointer];
+      accumulator_pointer ++;
+      content_pointer ++;
+      target_pointer ++;
+    } else if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) < 0) {
+      for (int i=0; i<w_order; i++) {
+        tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
+      }
       tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
       accumulator_pointer ++;
       target_pointer ++;
-    }
-    while(content_pointer<COO_size) {
+    } else {
       tmp_COO_crd[0][target_pointer] = COO1_crd[content_pointer];
       tmp_COO_crd[1][target_pointer] = COO2_crd[content_pointer];
       tmp_COO_vals[target_pointer] = COO_vals[content_pointer];
       content_pointer ++;
       target_pointer ++;
     }
-    for (int i = 0; i < target_pointer; i++) {
-      COO1_crd[i] = tmp_COO_crd[0][i];
-      COO2_crd[i] = tmp_COO_crd[1][i];
-      COO_vals[i] = tmp_COO_vals[i];
-    }
-    free(tmp_COO_crd[0]);
-    free(tmp_COO_crd[1]);
-    free(tmp_COO_vals);
-    return target_pointer;
+  }
+  while(accumulator_pointer<accumulator_size) {
+    for (int i=0; i<w_order; i++) {
+      tmp_COO_crd[i][target_pointer] = accumulator[accumulator_pointer].crd[i];
+    } 
+    tmp_COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
+    accumulator_pointer ++;
+    target_pointer ++;
+  }
+  while(content_pointer<COO_size) {
+    tmp_COO_crd[0][target_pointer] = COO1_crd[content_pointer];
+    tmp_COO_crd[1][target_pointer] = COO2_crd[content_pointer];
+    tmp_COO_vals[target_pointer] = COO_vals[content_pointer];
+    content_pointer ++;
+    target_pointer ++;
+  }
+  for (int i = 0; i < target_pointer; i++) {
+    COO1_crd[i] = tmp_COO_crd[0][i];
+    COO2_crd[i] = tmp_COO_crd[1][i];
+    COO_vals[i] = tmp_COO_vals[i];
+  }
+  free(tmp_COO_crd[0]);
+  free(tmp_COO_crd[1]);
+  free(tmp_COO_vals);
+  return target_pointer;
 }
 
 int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
@@ -161,29 +180,82 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
     // Clear
     w_accumulator_size = 0;
   }
+  /*
   int w1_pos[2] = {0,w_all_size};
   pack_C(C, w1_pos, w1_crd, w2_crd, w_vals);
+  */
+  int w1_pos[2] = {0,w_all_size};
+  C2_pos = (int32_t*)malloc(sizeof(int32_t) * (C1_dimension + 1));
+  C2_pos[0] = 0;
+  for (int32_t pC2 = 1; pC2 < (C1_dimension + 1); pC2++) {
+    C2_pos[pC2] = 0;
+  }
+  int32_t C2_crd_size = 1048576;
+  C2_crd = (int32_t*)malloc(sizeof(int32_t) * C2_crd_size);
+  int32_t kC = 0;
+  int32_t C_capacity = 1048576;
+  C_vals = (float*)malloc(sizeof(float) * C_capacity);
+
+  int32_t iw = w1_pos[0];
+  int32_t pw1_end = w1_pos[1];
+
+  while (iw < pw1_end) {
+    int32_t i = w1_crd[iw];
+    int32_t w1_segend = iw + 1;
+    while (w1_segend < pw1_end && w1_crd[w1_segend] == i) {
+      w1_segend++;
+    }
+    int32_t pC2_begin = kC;
+
+    for (int32_t kw = iw; kw < w1_segend; kw++) {
+      int32_t k0 = w2_crd[kw];
+      if (C_capacity <= kC) {
+        C_vals = (float*)realloc(C_vals, sizeof(float) * (C_capacity * 2));
+        C_capacity *= 2;
+      }
+      C_vals[kC] = w_vals[kw];
+      if (C2_crd_size <= kC) {
+        C2_crd = (int32_t*)realloc(C2_crd, sizeof(int32_t) * (C2_crd_size * 2));
+        C2_crd_size *= 2;
+      }
+      C2_crd[kC] = k0;
+      kC++;
+    }
+
+    C2_pos[i + 1] = kC - pC2_begin;
+    iw = w1_segend;
+  }
+
+  int32_t csC2 = 0;
+  for (int32_t pC20 = 1; pC20 < (C1_dimension + 1); pC20++) {
+    csC2 += C2_pos[pC20];
+    C2_pos[pC20] = csC2;
+  }
+
+  C->indices[1][0] = (int32_t*)(C2_pos);
+  C->indices[1][1] = (int32_t*)(C2_crd);
+  C->vals = (float*)C_vals;
   return 0;
 }
 
 void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C, bool print = false) {
   // C(i,k) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
-    vector<int> indptr;
-    vector<int> indices;
-    vector<int> id_buffer;
-    vector<float> value;
-    int nrow;
-    int ncol;
-    int nnz;
-    read_mtx_csr(A_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-    taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-    read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-    taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-    init_taco_tensor_DC(C, nrow, ncol, {0,1});
-    compute_coo(C,&A,&B);
-    if (print) {
-      print_taco_tensor_DC(&A);
-      print_taco_tensor_DC(&B);
-      print_taco_tensor_DC(C);
-    }
+  vector<int> indptr;
+  vector<int> indices;
+  vector<int> id_buffer;
+  vector<float> value;
+  int nrow;
+  int ncol;
+  int nnz;
+  read_mtx_csr(A_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+  taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+  read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+  taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+  init_taco_tensor_DC(C, nrow, ncol, {0,1});
+  compute_coo(C,&A,&B);
+  if (print) {
+    print_taco_tensor_DC(&A);
+    print_taco_tensor_DC(&B);
+    print_taco_tensor_DC(C);
+  }
 }

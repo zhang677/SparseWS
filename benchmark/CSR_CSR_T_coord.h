@@ -18,12 +18,35 @@ int32_t TryInsert_coord(bool* insertFail, wspace* accumulator, int32_t accumulat
 
 int Merge_coord(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, wspace* accumulator, int32_t accumulator_size){
   if (COO_size == 0) {
+      /*
       for (int i=0; i<accumulator_size; i++) {
         COO1_crd[i] = accumulator[i].crd[0];
         COO2_crd[i] = accumulator[i].crd[1];
         COO_vals[i] = accumulator[i].val;
       }
       return accumulator_size;
+      */
+      int accumulator_pointer = 0;
+      int target_pointer = 0;
+      COO1_crd[target_pointer] = accumulator[accumulator_pointer].crd[0];
+      COO2_crd[target_pointer] = accumulator[accumulator_pointer].crd[1];
+      COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
+      target_pointer++;
+      accumulator_pointer++;
+      while(accumulator_pointer < accumulator_size) {
+        tmp_con.crd[0] = COO1_crd[target_pointer-1];
+        tmp_con.crd[1] = COO2_crd[target_pointer-1];
+        if (esc_cmp(&accumulator[accumulator_pointer], &tmp_con) == 0) {
+          COO_vals[target_pointer-1] += accumulator[accumulator_pointer].val;
+        } else {
+          COO1_crd[target_pointer] = accumulator[accumulator_pointer].crd[0];
+          COO2_crd[target_pointer] = accumulator[accumulator_pointer].crd[1];
+          COO_vals[target_pointer] = accumulator[accumulator_pointer].val;
+          target_pointer++;
+        }
+        accumulator_pointer++;
+      }
+      return target_pointer;
     }
     int32_t* tmp_COO_crd[2];
     float* tmp_COO_vals;

@@ -331,7 +331,8 @@ void compare_array(Type* A, Type* B, int len, float thres = 0.0001) {
       std::cout<<"id: "<< i << "," << "A_val: " << A[i] << "B_val: " << B[i] << std::endl; 
     }
     if (count > 10) {
-      break;
+      std::cout << "Wrong!" <<std::endl;
+      return;
     }
   }
   std::cout << "Correct!" <<std::endl;
