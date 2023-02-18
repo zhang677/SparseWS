@@ -167,6 +167,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
 }
 
 void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, bool print = false) {
+  // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;

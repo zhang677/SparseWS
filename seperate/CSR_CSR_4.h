@@ -166,7 +166,8 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C) {
+void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C, bool print = false) {
+  // C(i,k) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -180,7 +181,9 @@ void CSR_CSR_4(const string& A_name, const string& B_name, taco_tensor_t* C) {
     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
     init_taco_tensor_DC(C, nrow, ncol, {0,1});
     compute_coo(C,&A,&B);
-    print_taco_tensor_DC(&A);
-    print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(C);
+    if (print) {
+      print_taco_tensor_DC(&A);
+      print_taco_tensor_DC(&B);
+      print_taco_tensor_DC(C);
+    }
 }
