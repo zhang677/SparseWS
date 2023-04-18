@@ -34,7 +34,7 @@ int32_t TryInsert(bool* insertFail, wspace* accumulator, int32_t accumulator_siz
   return Sort(accumulator, accumulator_capacity, true);
 }
 
-int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
+int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap) {
   int C1_dimension = (int)(C->dimensions[0]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
@@ -48,7 +48,7 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   int* restrict B2_crd = (int*)(B->indices[1][1]);
   float* restrict B_vals = (float*)(B->vals);
 
-  int32_t w_accumulator_capacity = 3; // Arbitrary
+  int32_t w_accumulator_capacity = w_cap; // Arbitrary
   int32_t w_accumulator_size = 0;
   wspace* restrict w_accumulator = 0;
   w_accumulator = (wspace*)malloc(sizeof(wspace) * w_accumulator_capacity);
@@ -69,7 +69,7 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
       int32_t j = A2_crd[jA];
       for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
         int32_t k = B2_crd[kB];
-        int32_t C_crds[2] = {i,k};
+        int32_t C_crds[2] = {k,i};
         // Try to insert to the hash array
         w_accumulator_size = TryInsert(&insertFail, w_accumulator, w_accumulator_size, w_accumulator_capacity, C_crds, A_vals[jA] * B_vals[kB]);
         //print_wspace(w_accumulator,w_accumulator_capacity);
@@ -110,7 +110,7 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
 }
 
 
-void CSR_CSR_5(const string& A_name, const string& B_name, taco_tensor_t* C) {
+void CSR_CSR_5(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap,bool print = false) {
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -123,8 +123,10 @@ void CSR_CSR_5(const string& A_name, const string& B_name, taco_tensor_t* C) {
     read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
     init_taco_tensor_DC(C, nrow, ncol, {0,1});
-    compute_coo_rev(C,&A,&B);
-    print_taco_tensor_DC(&A);
-    print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(C);
+    compute_coo_rev(C,&A,&B,w_cap);
+    if (print) {
+        print_taco_tensor_DC(&A);
+        print_taco_tensor_DC(&B);
+        print_taco_tensor_DC(C);
+    }
 }

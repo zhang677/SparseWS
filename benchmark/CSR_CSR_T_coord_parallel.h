@@ -106,7 +106,7 @@ int Merge_coord(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t C
     return target_pointer;
 }
 
-int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap) {
+int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   int C1_dimension = (int)(C->dimensions[0]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
@@ -131,7 +131,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
   int32_t C_capacity = 1048576;
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
-  int32_t w_accumulator_capacity = w_cap;
+  int32_t w_accumulator_capacity = omp_get_max_threads();// 16
   int32_t w_accumulator_size = 0;
   wspace* restrict w_accumulator = 0;
   w_accumulator = (wspace*)malloc(sizeof(wspace) * w_accumulator_capacity);
@@ -153,14 +153,14 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
   for (int32_t i = 0; i < A1_dimension; i++) {
     for (int32_t jA = A2_pos[i]; jA < A2_pos[i+1]; jA++) {
       int32_t j = A2_crd[jA];
-      for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
+      #pragma omp parallel for schedule(runtime)
+      for (int32_t kB = B2_pos[j] + omp_get_thread_num(); kB < B2_pos[j+1]; kB += omp_get_max_threads()) {
         int32_t k = B2_crd[kB];
         w_point[0] = k;
         w_point[1] = i; // Transpose
         // Try to insert to the accumulator array
         w_accumulator_size = TryInsert_coord(w_insertFail,w_accumulator,w_accumulator_size,w_accumulator_capacity,w_point,A_vals[jA] * B_vals[kB]);
         if (w_insertFail[0]) {
-          //std::cout << "Seperate point: (" << w_point[0]<< "," << w_point[1] << ")" << std::endl;
           // Enlarge
           if(w_accumulator_size + w_all_size > w_all_capacity) {
             w_all_capacity = w_all_capacity * 2;
@@ -170,7 +170,9 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
             w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
           }
           // Merge
-          w_all_size = Merge_coord(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator, w_accumulator_size);
+          # pragma omp critical {
+            w_all_size = Merge_coord(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator, w_accumulator_size);
+          }
           // Clear
           w_accumulator_size = 0;
           // Insert the wspace that conflicts
@@ -201,7 +203,6 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
   int w1_pos[2] = {0,w_all_size};
   pack_C(C, w1_pos, w1_crd, w2_crd, w_vals);
   */
-  //std::cout << "Start packing" << std::endl;
   w1_pos[0] = 0;
   w1_pos[1] = w_all_size;
   int32_t kw = w1_pos[0];
@@ -255,25 +256,24 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
   return 0;
 }
 
-void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
+void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, bool print = false) {
   // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
-  std::cout << "CSR_CSR_T_coord" << std::endl;
-  vector<int> indptr;
-  vector<int> indices;
-  vector<int> id_buffer;
-  vector<float> value;
-  int nrow;
-  int ncol;
-  int nnz;
-  read_mtx_csr(A_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-  taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-  read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-  taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-  init_taco_tensor_DC(C, nrow, ncol, {0,1});
-  compute_coo(C,&A,&B,w_cap);
-  if (print) {
-    print_taco_tensor_DC(&A);
-    print_taco_tensor_DC(&B);
-    print_taco_tensor_DC(C);
-  }
+    vector<int> indptr;
+    vector<int> indices;
+    vector<int> id_buffer;
+    vector<float> value;
+    int nrow;
+    int ncol;
+    int nnz;
+    read_mtx_csr(A_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    init_taco_tensor_DC(C, nrow, ncol, {0,1});
+    compute_coo(C,&A,&B);
+    if (print) {
+      print_taco_tensor_DC(&A);
+      print_taco_tensor_DC(&B);
+      print_taco_tensor_DC(C);
+    }
 }

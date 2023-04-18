@@ -232,6 +232,14 @@ void print_eigen_csc(EigenCSC& C) {
   print_array<float>(C.valuePtr(), C.outerIndexPtr()[C.outerSize()]);
 }
 
+void print_csr(int nrow, int ncol, int* indptr_buffer, int* indices_buffer, float* value_buffer) {
+  cout << "(" << nrow << "," << ncol << ")" << endl;
+  int nnz = indptr_buffer[nrow];
+  print_array<int>(indptr_buffer, nrow + 1);
+  print_array<int>(indices_buffer, nnz);
+  print_array<float>(value_buffer, nnz);
+}
+
 void dense_to_compressed(vector<int>& hindptr, vector<int>& hindices, vector<int>& new_indptr, const vector<int>& indptr) {
     hindices.clear();
     hindptr.clear();

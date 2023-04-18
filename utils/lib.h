@@ -25,6 +25,14 @@
 #define TACO_DEREF(_a) (((___context___*)(*__ctx__))->_a)
 #define restrict __restrict__
 
+#define checkMKLError(a)                                                       \
+  do {                                                                         \
+    if (SPARSE_STATUS_SUCCESS != (a)) {                                        \
+      fprintf(stderr, "MKL runTime error in line %d of file %s \n", __LINE__,  \
+              __FILE__);                                                       \
+      exit(EXIT_FAILURE);                                                      \
+    }                                                                          \
+  } while (0)
 
 typedef enum { taco_mode_dense, taco_mode_sparse } taco_mode_t;
 
