@@ -9,14 +9,14 @@ int w_cmp(const void *b, const void *a) {
     if (((wspace*)b)->crd[i] == ((wspace*)a)->crd[i]) continue;
     return (((wspace*)b)->crd[i] - ((wspace*)a)->crd[i]);
   }
-return (((wspace*)b)->crd[1] - ((wspace*)a)->crd[1]);
+  return (((wspace*)b)->crd[1] - ((wspace*)a)->crd[1]);
 }
 int w_cmp_rev(const void *a, const void *b) {
   for (int i = 0; i < 2; i++) {
     if (((wspace*)b)->crd[i] == ((wspace*)a)->crd[i]) continue;
     return (((wspace*)b)->crd[i] - ((wspace*)a)->crd[i]);
   }
-return (((wspace*)b)->crd[1] - ((wspace*)a)->crd[1]);
+  return (((wspace*)b)->crd[1] - ((wspace*)a)->crd[1]);
 }
 int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, wspace* accumulator, int32_t accumulator_size) {
   if (COO_size == 0) {
@@ -105,7 +105,8 @@ int hash_func(const int crd, const int tsize) {
 int32_t TryInsert_hash(bool* insertFail, wspace* accumulator, int32_t accumulator_size, int32_t accumulator_capacity, int32_t* crds, float val) {
   int hashkey = hash_func(crds[0] + crds[1], accumulator_capacity);
   int step = 0;
-  int bmap = 0; // The length depends on hash table size
+  //int bmap = 0; // The length depends on hash table size
+  int32_t* bitmap = (int32_t*)malloc(sizeof(int32_t) * (accumulator_capacity / 32 + 1));
   wspace tmp;
   tmp.crd[0] = crds[0];
   tmp.crd[1] = crds[1];
@@ -121,10 +122,12 @@ int32_t TryInsert_hash(bool* insertFail, wspace* accumulator, int32_t accumulato
       *insertFail = false;
       return accumulator_size;
     } else {
-      bmap |= 1<<hashkey;
+      //bmap |= 1<<hashkey;
+      bitmap[hashkey / 32] |= 1<<(hashkey % 32);
       hashkey = (hashkey + accumulator_capacity - 1) % accumulator_capacity; // linear-probe
     }
-  }while(bmap & 1<<hashkey == 0); // Hash table still has space to insert 
+  }while(bitmap[hashkey / 32] & 1<<(hashkey % 32) == 0); // Hash table still has space to insert
+  //while(bmap & 1<<hashkey == 0); // Hash table still has space to insert 
   *insertFail = true;
   return Sort(accumulator, accumulator_capacity, true);
 }

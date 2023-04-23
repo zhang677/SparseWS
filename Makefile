@@ -8,7 +8,7 @@ MKLLIBS = -L$(MKL_INSTALL_PATH)
 LDMKL = -lmkl_core -lmkl_intel_lp64 -lmkl_intel_thread
 
 test: test.o Makefile
-	g++ -o test-sort ${EIGEN_INC} test.o -liomp5 -lpthread -lm -ldl ${LDMKL}
+	g++ -o test ${EIGEN_INC} test.o -liomp5 -lpthread -lm -ldl ${LDMKL}
 
 test.o: main.cpp ./utils/lib.h Makefile
 	g++ -o test.o -c -fpermissive -std=c++17 ${EIGEN_INC} ${MKLLIBS} main.cpp
