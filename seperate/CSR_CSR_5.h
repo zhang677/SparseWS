@@ -71,8 +71,8 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_
         int32_t k = B2_crd[kB];
         int32_t C_crds[2] = {k,i};
         // Try to insert to the hash array
+        print_wspace(w_accumulator, w_accumulator_capacity);
         w_accumulator_size = TryInsert(&insertFail, w_accumulator, w_accumulator_size, w_accumulator_capacity, C_crds, A_vals[jA] * B_vals[kB]);
-        //print_wspace(w_accumulator,w_accumulator_capacity);
         // No space to insert. Do contraction
         if (insertFail) {
           // Enlarge output and input arraies (optimization needed)
@@ -89,6 +89,9 @@ int compute_coo_rev(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_
           // Insert the wspace that conflicts
           w_accumulator_size = TryInsert(&insertFail, w_accumulator, w_accumulator_size, w_accumulator_capacity, C_crds, A_vals[jA] * B_vals[kB]);
         }
+        print_array<int32_t>(C_COO_crd[0], C_COO_size);
+        print_array<int32_t>(C_COO_crd[1], C_COO_size);
+        print_array<float>(C_COO_vals, C_COO_size);
       }
     }
   }

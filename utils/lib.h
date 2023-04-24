@@ -17,6 +17,7 @@
 #include <vector>
 #include <cmath>
 #include <limits>
+#include <numeric>
 #include <Eigen/Sparse>
 #include <omp.h>
 #include <boost/algorithm/string.hpp>
@@ -48,8 +49,6 @@ struct taco_tensor_t {
   int32_t      vals_size;     // values array size
 };
 
-
-
 typedef Eigen::SparseMatrix<float,Eigen::RowMajor,int> EigenCSR;
 typedef Eigen::SparseMatrix<float,Eigen::ColMajor,int> EigenCSC;
 typedef Eigen::Matrix<float,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> EigenRowMajor;
@@ -62,6 +61,17 @@ struct COO {
   int*    cols = nullptr;
   float* vals = nullptr;
 };
+
+template <typename T>
+std::vector<T> apply_permutation(
+    const std::vector<T>& vec,
+    const std::vector<std::size_t>& p)
+{
+    std::vector<T> sorted_vec(vec.size());
+    std::transform(p.begin(), p.end(), sorted_vec.begin(),
+        [&](std::size_t i){ return vec[i]; });
+    return sorted_vec;
+}
 
 void deinit_taco_tensor_t(taco_tensor_t* t) {
   for (int i = 0; i < t->order; i++) {
@@ -230,16 +240,35 @@ EigenCSR to_eigen_csr(const COO matrix, int shift = 0) {
   return dst;
 }
 
-EigenCSR to_eigen_csr(int nrow, int ncol, int nnz, std::vector<int> &outer_buffer, std::vector<int> &inner_buffer, std::vector<float> &vals) {
+EigenCSR to_eigen_csr(int nrow, int ncol, int nnz, std::vector<int> &outer_buffer, std::vector<int> &inner_buffer, std::vector<float> &vals, bool shift = false) {
   EigenCSR dst(nrow, ncol);
   std::vector<Eigen::Triplet<float>> tripletList;
   tripletList.reserve(nnz);
-  for (size_t i = 0; i < nnz; i++) {
-    tripletList.push_back({outer_buffer[i], inner_buffer[i], vals[i]});
+  if (shift) {
+    std::vector<std::size_t> p(nnz);
+    std::iota(p.begin(), p.end(), 0);
+    std::sort(p.begin(), p.end(), [&](std::size_t i, std::size_t j) { 
+      if (outer_buffer[i] == outer_buffer[j]) {
+        return inner_buffer[i] < inner_buffer[j];
+      }
+      return outer_buffer[i] < outer_buffer[j];
+     });
+    std::vector<int> outer_buffer_sorted = apply_permutation<int>(outer_buffer, p);
+    std::vector<int> inner_buffer_sorted = apply_permutation<int>(inner_buffer, p);
+    for (size_t i = 0; i < nnz; i++) {
+      tripletList.push_back({outer_buffer_sorted[i], inner_buffer_sorted[i], vals[i]});
+    }
+    dst.setFromTriplets(tripletList.begin(), tripletList.end());
+    dst.makeCompressed();
+    return dst;
+  } else {
+    for (size_t i = 0; i < nnz; i++) {
+      tripletList.push_back({outer_buffer[i], inner_buffer[i], vals[i]});
+    }
+    dst.setFromTriplets(tripletList.begin(), tripletList.end());
+    dst.makeCompressed();
+    return dst;
   }
-  dst.setFromTriplets(tripletList.begin(), tripletList.end());
-  dst.makeCompressed();
-  return dst;
 }
 
 EigenCSC to_eigen_csc(int &nrow, int &ncol, int &nnz, std::vector<int> &outer_buffer, std::vector<int> &inner_buffer, std::vector<float> &vals) {

@@ -10,9 +10,12 @@ void CSR_CSR_T_Eigen(const string& A_name, const string& B_name, EigenCSR& C, bo
   int ncol;
   int nnz;
   read_mtx_csr(A_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-  EigenCSR A = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value);
+  EigenCSR A = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, true);
+  id_buffer.clear();
+  indices.clear();
+  value.clear();
   read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-  EigenCSR B = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value);
+  EigenCSR B = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, true);
   C = (A * B).transpose();
   if (print) {
     print_eigen_csr(A);

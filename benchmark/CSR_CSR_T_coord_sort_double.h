@@ -1,15 +1,15 @@
 #include "../utils/dataloader.h"
 #include "../utils/lib.h"
 
-#define w_accumulator_capacity 1048576
+#define w_acc_capacity 3
 #define w_order 2
 
 struct wspace_t {
-  int32_t crd[w_order][w_accumulator_capacity];
-  float val[w_accumulator_capacity];
+  int32_t crd[w_order][w_acc_capacity];
+  float val[w_acc_capacity];
 };
 wspace_t w_accumulator;
-int32_t w_accumulator_index[w_accumulator_capacity];
+int32_t w_accumulator_index[w_acc_capacity];
 
 int esc_cmp_t(const void* a, const void* b) {
   int l = *(int32_t *)a;
@@ -18,7 +18,7 @@ int esc_cmp_t(const void* a, const void* b) {
     if (w_accumulator.crd[i][l] == w_accumulator.crd[i][r]) continue;
     return w_accumulator.crd[i][l] - w_accumulator.crd[i][r];
   }
-  return w_accumulator.crd[1][l] - w_accumulator.crd[1][r];
+  return w_accumulator.crd[w_order - 1][l] - w_accumulator.crd[w_order - 1][r];
 }
 
 int esc_cmp_t_rev(const void* a, const void* b) {
@@ -28,7 +28,7 @@ int esc_cmp_t_rev(const void* a, const void* b) {
     if (w_accumulator.crd[i][r] == w_accumulator.crd[i][l]) continue;
     return w_accumulator.crd[i][r] - w_accumulator.crd[i][l];
   }
-  return w_accumulator.crd[1][r] - w_accumulator.crd[1][l];
+  return w_accumulator.crd[w_order - 1][r] - w_accumulator.crd[w_order - 1][l];
 }
 
 int Sort_t(size_t size, bool rev) {
@@ -62,9 +62,9 @@ int compare(int32_t l, int32_t r, int32_t* crd0, int32_t* crd1) {
 }
 
 int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* crds, float val) {
-  if (accumulator_size == w_accumulator_capacity) {
+  if (accumulator_size == w_acc_capacity) {
     *insertFail = true;
-    return Sort_t(w_accumulator_capacity, false);
+    return Sort_t(w_acc_capacity, false);
   } else {
     w_accumulator_index[accumulator_size] = accumulator_size;
     w_accumulator.crd[0][accumulator_size] = crds[0];
@@ -184,7 +184,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
   int32_t w_accumulator_size = 0;
-  int32_t w_all_capacity = w_accumulator_capacity; 
+  int32_t w_all_capacity = w_acc_capacity; 
   int32_t w_all_size = 0;
   int32_t* w1_crd_0 = 0;
   int32_t* w2_crd_0 = 0;
@@ -284,7 +284,6 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   w1_pos[1] = w_all_size;
   int32_t kw = w1_pos[0];
   int32_t pw1_end = w1_pos[1];
-
 
   while (kw < pw1_end) {
     int32_t k = w1_crd[kw];
