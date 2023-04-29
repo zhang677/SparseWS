@@ -7,11 +7,11 @@
 //#include "seperate/CSR_CSR_5.h"
 //#include "evaluate/CSR_CSR_Eigen.h"
 //#include "benchmark/CSR_CSR_T_coord.h"
-//#include "benchmark/CSR_CSR_T_coord_sort.h"
-//#include "benchmark/CSR_CSR_T_coord_sort_double.h"
+//#include "benchmark/CSR_CSR_T_coord_index.h"
 //#include "benchmark/CSR_CSR_T_generated.h"
 //#include "baseline/mmt.h"
 #include "benchmark/CSR_CSR_T_hash.h"
+//#include "benchmark/CSR_CSR_T_coord_index_double.h"
 #include "benchmark/CSR_CSR_T_eigen.h"
 #include <iostream>
 #include <time.h>
@@ -22,15 +22,17 @@ using namespace std;
 //     taco_tensor_t C;
 //     EigenCSR C_true;
 //     CSR_CSR_T_Eigen(filename1, filename2, C_true);
-//     CSR_CSR_T_coord_sort_double(filename1, filename2, &C, w_cap);
+//     CSR_CSR_T_coord_index_double(filename1, filename2, &C, w_cap);
 //     check_csr_taco_eigen(C, C_true);
 // }
 
 void check_eigen_hash(const string filename1, const string filename2, const int repeat, const int w_cap, bool verbose) {
     taco_tensor_t C;
     EigenCSR C_true;
+    std::cout << "Eigen" << std::endl;
     CSR_CSR_T_Eigen(filename1, filename2, C_true, verbose);
     //CSR_CSR_5(filename1, filename2, &C, w_cap);
+    std::cout << "Hash" << std::endl;
     CSR_CSR_T_hash(filename1, filename2, &C, w_cap, verbose);
     check_csr_taco_eigen(C, C_true);
 }
@@ -54,13 +56,13 @@ void check_eigen_hash(const string filename1, const string filename2, const int 
 //     duration = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
 //     std::cout << duration << " seconds" << std::endl;
 
-//     std::cout << "CSR_CSR_T_coord_sort" << std::endl;
+//     std::cout << "CSR_CSR_T_coord_index" << std::endl;
 //     for (int i = 0; i < warmup; i++) {
-//         CSR_CSR_T_coord_sort_double(filename1, filename2, &C, w_cap);
+//         CSR_CSR_T_coord_index_double(filename1, filename2, &C, w_cap);
 //     }
 //     start = clock();
 //     for (int i = 0; i < repeat; i++) { 
-//         CSR_CSR_T_coord_sort_double(filename1, filename2, &C, w_cap);
+//         CSR_CSR_T_coord_index_double(filename1, filename2, &C, w_cap);
 //     }
 //     finish = clock();
 //     duration = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
@@ -90,11 +92,11 @@ void check_eigen_hash(const string filename1, const string filename2, const int 
 //     duration_eigen = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
 
 //     for (int i = 0; i < warmup; i++) {
-//         CSR_CSR_T_coord_sort_double(filename1, filename2, &C, w_cap);
+//         CSR_CSR_T_coord_index_double(filename1, filename2, &C, w_cap);
 //     }
 //     start = clock();
 //     for (int i = 0; i < repeat; i++) { 
-//         CSR_CSR_T_coord_sort_double(filename1, filename2, &C, w_cap);
+//         CSR_CSR_T_coord_index_double(filename1, filename2, &C, w_cap);
 //     }
 //     finish = clock();
 //     duration_taco = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);

@@ -4,6 +4,7 @@ from scipy.io import mmwrite
 import argparse
 import os
 from pathlib import Path
+from tqdm import tqdm
 
 from util import SuiteSparseTensor, InputCacheSuiteSparse
 from sam.util import SUITESPARSE_FORMATTED_PATH, ScipyTensorShifter
@@ -55,12 +56,15 @@ if __name__ == '__main__':
 
   if args.tiles:
       print(in_dirname)
-      mtxnames = [fname for fname in os.listdir(in_dirname) if fname.endswith(".mtx")]
+      #mtxnames = [fname for fname in os.listdir(in_dirname) if fname.endswith(".mtx")]
+      mtxnames = [fname for fname in os.listdir(in_dirname)]
       print(mtxnames)
-      mtx_files = [os.path.join(in_dirname, fname) for fname in mtxnames]
-      out_mtx_files = [os.path.join(out_dirname, fname.replace(".mtx", "-st.mtx")) for fname in mtxnames]
+      #mtx_files = [os.path.join(in_dirname, fname) for fname in mtxnames]
+      mtx_files = [os.path.join(in_dirname, fname, fname + ".mtx") for fname in mtxnames]
+      #out_mtx_files = [os.path.join(out_dirname, fname.replace(".mtx", "-st.mtx")) for fname in mtxnames]
+      out_mtx_files = [os.path.join(out_dirname, fname + "-st.mtx") for fname in mtxnames]
       tensors = [SuiteSparseTensor(mtx_file) for mtx_file in mtx_files]
-      for i, ten in enumerate(tensors):
+      for i, ten in tqdm(enumerate(tensors)):
            out_name = out_mtx_files[i]
            coo = inputCache.load(ten, False)
            shifted = ScipyTensorShifter().shiftLastMode(coo)

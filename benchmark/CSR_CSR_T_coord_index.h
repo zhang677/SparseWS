@@ -76,7 +76,7 @@ int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* c
   }
 }
 
-int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_0,int32_t* COO1_crd_1, int32_t* COO2_crd_1, float* COO_vals_1, int32_t all_array_id, int32_t* w_all_capacity_0, int32_t* w_all_capacity_1, int32_t COO_size, int32_t accumulator_size) {
+int32_t Merge_coord_t(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, int32_t accumulator_size) {
   int p1 = 0;
   int p2 = 1;
   while (p2 < accumulator_size) {
@@ -95,67 +95,19 @@ int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_
     p2++;
   }
   accumulator_size = p1 + 1;
-  int32_t* COO1_crd;
-  int32_t* COO2_crd;
-  float* COO_vals;
-  if (all_array_id == 0) {
-    COO1_crd = COO1_crd_0;
-    COO2_crd = COO2_crd_0;
-    COO_vals = COO_vals_0;
-  } else {
-    COO1_crd = COO1_crd_1;
-    COO2_crd = COO2_crd_1;
-    COO_vals = COO_vals_1;
-  }
-
-  int32_t* tmp_COO_crd[2];
-  float* tmp_COO_vals;
-  
-  if (all_array_id == 0) {
-    std::cout << "Choose 0: " << accumulator_size << "," << COO_size << "," <<std::endl;
-    if (accumulator_size + COO_size > *w_all_capacity_1) {
-      int32_t tmp = (*w_all_capacity_1) * 2;
-      *w_all_capacity_1 = accumulator_size + COO_size > tmp ? accumulator_size + COO_size : tmp;
-      std::cout << "Realloc 1 start!" << *w_all_capacity_0 << "," << *w_all_capacity_1 << std::endl;
-      COO1_crd_1 = (int32_t*)realloc(COO1_crd_1 ,sizeof(int32_t) * (*w_all_capacity_1));
-      std::cout << "Realloc 1 COO1" << std::endl;
-      COO2_crd_1 = (int32_t*)realloc(COO2_crd_1 ,sizeof(int32_t) * (*w_all_capacity_1));
-      std::cout << "Realloc 1 COO2" << std::endl;
-      COO_vals_1 = (float*)realloc(COO_vals_1 ,sizeof(float) * (*w_all_capacity_1));
-      std::cout << "Realloc 1 end!" << std::endl;
-    }
-    tmp_COO_crd[0] = COO1_crd_1;
-    tmp_COO_crd[1] = COO2_crd_1;
-    tmp_COO_vals = COO_vals_1;
-  } else {
-    std::cout << "Choose 1: " << accumulator_size << "," << COO_size << "," <<std::endl;
-    if (accumulator_size + COO_size > *w_all_capacity_0) {
-      int32_t tmp = (*w_all_capacity_0) * 2;
-      *w_all_capacity_0 = accumulator_size + COO_size > tmp ? accumulator_size + COO_size : tmp;
-      std::cout << "Realloc 0 start!" << *w_all_capacity_0 << "," << *w_all_capacity_1 << std::endl;
-      COO1_crd_0 = (int32_t*)realloc(COO1_crd_0 ,sizeof(int32_t) * (*w_all_capacity_0));
-      std::cout << "Realloc 0 COO1" << std::endl;
-      COO1_crd_0 = (int32_t*)realloc(COO2_crd_0 ,sizeof(int32_t) * (*w_all_capacity_0));
-      std::cout << "Realloc 0 COO2" << std::endl;
-      COO_vals_0  = (float*)realloc(COO_vals_0 ,sizeof(float) * (*w_all_capacity_0));
-      std::cout << "Realloc 0 end!" << std::endl;
-    }
-    tmp_COO_crd[0] = COO1_crd_0;
-    tmp_COO_crd[1] = COO2_crd_0;
-    tmp_COO_vals = COO_vals_0;
-  }
-
   if (COO_size == 0) {
-    // assert all_array_id == 0
     for (int i = 0; i < accumulator_size; i++) {
-      tmp_COO_crd[0][i] = w_accumulator.crd[0][w_accumulator_index[i]];
-      tmp_COO_crd[1][i] = w_accumulator.crd[1][w_accumulator_index[i]];
-      tmp_COO_vals[i] = w_accumulator.val[w_accumulator_index[i]];
+      COO1_crd[i] = w_accumulator.crd[0][w_accumulator_index[i]];
+      COO2_crd[i] = w_accumulator.crd[1][w_accumulator_index[i]];
+      COO_vals[i] = w_accumulator.val[w_accumulator_index[i]];
     }
     return accumulator_size;
   }
-
-  
+  int32_t* tmp_COO_crd[2];
+  float* tmp_COO_vals;
+  tmp_COO_crd[0] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
+  tmp_COO_crd[1] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
+  tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + COO_size));
   int accumulator_pointer = 0;
   int content_pointer = 0;
   int target_pointer = 0;
@@ -196,10 +148,18 @@ int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_
     content_pointer ++;
     target_pointer ++;
   }
+  for (int i = 0; i < target_pointer; i++) {
+    COO1_crd[i] = tmp_COO_crd[0][i];
+    COO2_crd[i] = tmp_COO_crd[1][i];
+    COO_vals[i] = tmp_COO_vals[i];
+  }
+  free(tmp_COO_crd[0]);
+  free(tmp_COO_crd[1]);
+  free(tmp_COO_vals);
   return target_pointer;
 }
 
-int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
+int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap) {
   int C1_dimension = (int)(C->dimensions[0]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
@@ -225,30 +185,17 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
   int32_t w_accumulator_size = 0;
-  int32_t w_all_capacity_0[1] = {w_accumulator_capacity}; 
-  int32_t w_all_capacity_1[1] = {w_accumulator_capacity}; 
+  int32_t w_all_capacity = w_accumulator_capacity; 
   int32_t w_all_size = 0;
-  int32_t* w1_crd_0 = 0;
-  int32_t* w2_crd_0 = 0;
-  float* w_vals_0 = 0;
-  w1_crd_0 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_0[0]);
-  w2_crd_0 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_0[0]);
-  w_vals_0 = (float*)malloc(sizeof(float) * w_all_capacity_0[0]);
-  int32_t* w1_crd_1 = 0;
-  int32_t* w2_crd_1 = 0;
-  float* w_vals_1 = 0;
-  w1_crd_1 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_1[0]);
-  w2_crd_1 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_1[0]);
-  w_vals_1 = (float*)malloc(sizeof(float) * w_all_capacity_1[0]);
   int32_t* w1_crd = 0;
   int32_t* w2_crd = 0;
   float* w_vals = 0;
-  int32_t all_array_id = 0;
-
+  w1_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity);
+  w2_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity);
+  w_vals = (float*)malloc(sizeof(float) * w_all_capacity);
   bool w_insertFail = false; 
   int32_t w_point[w_order];
   int32_t w1_pos[w_order];
-
   for (int32_t i = 0; i < A1_dimension; i++) {
     for (int32_t jA = A2_pos[i]; jA < A2_pos[i+1]; jA++) {
       int32_t j = A2_crd[jA];
@@ -258,10 +205,16 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
         w_point[1] = i; // Transpose
 
         w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[jA] * B_vals[kB]);
-        if (w_insertFail) {          
-          w_all_size = Merge_coord_t(w1_crd_0, w2_crd_0, w_vals_0, w1_crd_1, w2_crd_1, w_vals_1, all_array_id, w_all_capacity_0, w_all_capacity_1, w_all_size, w_accumulator_size);
+        if (w_insertFail) {
+          if(w_accumulator_size + w_all_size > w_all_capacity) {
+            w_all_capacity = w_all_capacity * 2;
+            //std::cout << w_all_capacity << std::endl;
+            w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+            w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+            w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+          }
+          w_all_size = Merge_coord_t(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_size);
           w_accumulator_index[0] = 0;
-          all_array_id ^= 1;
           w_accumulator_size = 0;
           w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[jA] * B_vals[kB]);
         }
@@ -271,28 +224,18 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   if (w_accumulator_size > 0) {
     // Sort
     w_accumulator_size = Sort_t(w_accumulator_size, false);
+    // Enlarge
+    if(w_accumulator_size + w_all_size > w_all_capacity) {
+        w_all_capacity = w_all_capacity * 2;
+        w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+        w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+        w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+    }
     // Merge
-    w_all_size = Merge_coord_t(w1_crd_0, w2_crd_0, w_vals_0, w1_crd_1, w2_crd_1, w_vals_1, all_array_id, w_all_capacity_0, w_all_capacity_1, w_all_size, w_accumulator_size);
-    all_array_id ^= 1;
+    w_all_size = Merge_coord_t(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_size);
     // Clear
     w_accumulator_size = 0;
   }
-  if (all_array_id == 0) {
-    w1_crd = w1_crd_0;
-    w2_crd = w2_crd_0;
-    w_vals = w_vals_0;
-    free(w_vals_1);
-    free(w1_crd_1);
-    free(w2_crd_1);
-  } else {
-    w1_crd = w1_crd_1;
-    w2_crd = w2_crd_1;
-    w_vals = w_vals_1;
-    free(w_vals_0);
-    free(w1_crd_0);
-    free(w2_crd_0);
-  }
-  
   w1_pos[0] = 0;
   w1_pos[1] = w_all_size;
   int32_t kw = w1_pos[0];
@@ -330,8 +273,6 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   free(w1_crd);
   free(w2_crd);
 
-
-
   int32_t csC2 = 0;
   for (int32_t pC2 = 1; pC2 < (C1_dimension + 1); pC2++) {
     csC2 += C2_pos[pC2];
@@ -344,7 +285,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSR_T_coord_sort_double(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
+void CSR_CSR_T_coord_index(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
   // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
   vector<int> indptr;
   vector<int> indices;
@@ -358,7 +299,7 @@ void CSR_CSR_T_coord_sort_double(const string& A_name, const string& B_name, tac
   read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
   taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
   init_taco_tensor_DC(C, nrow, ncol, {0,1});
-  compute_coo(C,&A,&B);
+  compute_coo(C,&A,&B,w_cap);
   if (print) {
     print_taco_tensor_DC(&A);
     print_taco_tensor_DC(&B);
