@@ -1,15 +1,17 @@
 #include "../utils/dataloader.h"
 #include "../utils/lib.h"
 
-#define w_acc_capacity 3
+#ifndef CAP
+ #define CAP 1048576
+#endif
 #define w_order 2
 
 struct wspace_t {
-  int32_t crd[w_order][w_acc_capacity];
-  float val[w_acc_capacity];
+  int32_t crd[w_order][CAP];
+  float val[CAP];
 };
 wspace_t w_accumulator;
-int32_t w_accumulator_index[w_acc_capacity];
+int32_t w_accumulator_index[CAP];
 
 int esc_cmp_t(const void* a, const void* b) {
   int l = *(int32_t *)a;
@@ -62,9 +64,9 @@ int compare(int32_t l, int32_t r, int32_t* crd0, int32_t* crd1) {
 }
 
 int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* crds, float val) {
-  if (accumulator_size == w_acc_capacity) {
+  if (accumulator_size == CAP) {
     *insertFail = true;
-    return Sort_t(w_acc_capacity, false);
+    return Sort_t(CAP, false);
   } else {
     w_accumulator_index[accumulator_size] = accumulator_size;
     w_accumulator.crd[0][accumulator_size] = crds[0];
@@ -76,25 +78,8 @@ int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* c
   }
 }
 
+
 int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_0,int32_t* COO1_crd_1, int32_t* COO2_crd_1, float* COO_vals_1, int32_t COO_size, int32_t accumulator_size) {
-  int p1 = 0;
-  int p2 = 1;
-  while (p2 < accumulator_size) {
-    if (esc_cmp_t(&w_accumulator_index[p2], &w_accumulator_index[p1]) == 0) {
-      w_accumulator.val[w_accumulator_index[p1]] += w_accumulator.val[w_accumulator_index[p2]];
-    } else {
-      if (p2 - p1 > 1) {
-        p1++;
-        w_accumulator.crd[0][w_accumulator_index[p1]] = w_accumulator.crd[0][w_accumulator_index[p2]];
-        w_accumulator.crd[1][w_accumulator_index[p1]] = w_accumulator.crd[1][w_accumulator_index[p2]];
-        w_accumulator.val[w_accumulator_index[p1]] = w_accumulator.val[w_accumulator_index[p2]];
-      } else {
-        p1++;
-      }
-    }
-    p2++;
-  }
-  accumulator_size = p1 + 1;
   int32_t* COO1_crd;
   int32_t* COO2_crd;
   float* COO_vals;
@@ -107,14 +92,6 @@ int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_
   tmp_COO_crd[1] = COO2_crd_1;
   tmp_COO_vals = COO_vals_1;
 
-  if (COO_size == 0) {
-    for (int i = 0; i < accumulator_size; i++) {
-      tmp_COO_crd[0][i] = w_accumulator.crd[0][w_accumulator_index[i]];
-      tmp_COO_crd[1][i] = w_accumulator.crd[1][w_accumulator_index[i]];
-      tmp_COO_vals[i] = w_accumulator.val[w_accumulator_index[i]];
-    }
-    return accumulator_size;
-  }
   int accumulator_pointer = 0;
   int content_pointer = 0;
   int target_pointer = 0;
@@ -124,14 +101,33 @@ int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_
       tmp_COO_crd[0][target_pointer] = w_accumulator.crd[0][w_accumulator_index[accumulator_pointer]];
       tmp_COO_crd[1][target_pointer] = w_accumulator.crd[1][w_accumulator_index[accumulator_pointer]];
       tmp_COO_vals[target_pointer] = w_accumulator.val[w_accumulator_index[accumulator_pointer]] + COO_vals[content_pointer];
-      accumulator_pointer ++;
+      // accumulator_pointer ++;
+      if (accumulator_pointer + 1 < accumulator_size && compare(w_accumulator_index[accumulator_pointer + 1], content_pointer, COO1_crd, COO2_crd) == 0) {
+        int accumulator_pointer_tmp = accumulator_pointer + 1;
+        while(accumulator_pointer_tmp < accumulator_size && compare(w_accumulator_index[accumulator_pointer_tmp], content_pointer, COO1_crd, COO2_crd) == 0) {
+          tmp_COO_vals[target_pointer] += w_accumulator.val[w_accumulator_index[accumulator_pointer_tmp]];
+          accumulator_pointer_tmp ++;
+        }
+        accumulator_pointer = accumulator_pointer_tmp;
+      } else {
+        accumulator_pointer ++;
+      }
       content_pointer ++;
       target_pointer ++;
     } else if (cmp < 0) {
       tmp_COO_crd[0][target_pointer] = w_accumulator.crd[0][w_accumulator_index[accumulator_pointer]];
       tmp_COO_crd[1][target_pointer] = w_accumulator.crd[1][w_accumulator_index[accumulator_pointer]];
       tmp_COO_vals[target_pointer] = w_accumulator.val[w_accumulator_index[accumulator_pointer]];
-      accumulator_pointer ++;
+      if (accumulator_pointer + 1 < accumulator_size && compare(w_accumulator_index[accumulator_pointer + 1], content_pointer, COO1_crd, COO2_crd) == 0) {
+        int accumulator_pointer_tmp = accumulator_pointer + 1;
+        while(accumulator_pointer_tmp < accumulator_size && compare(w_accumulator_index[accumulator_pointer_tmp], content_pointer, COO1_crd, COO2_crd) == 0) {
+          tmp_COO_vals[target_pointer] += w_accumulator.val[w_accumulator_index[accumulator_pointer_tmp]];
+          accumulator_pointer_tmp ++;
+        }
+        accumulator_pointer = accumulator_pointer_tmp;
+      } else {
+        accumulator_pointer ++;
+      }
       target_pointer ++;
     } else {
       tmp_COO_crd[0][target_pointer] = COO1_crd[content_pointer];
@@ -145,7 +141,16 @@ int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_
     tmp_COO_crd[0][target_pointer] = w_accumulator.crd[0][w_accumulator_index[accumulator_pointer]];
     tmp_COO_crd[1][target_pointer] = w_accumulator.crd[1][w_accumulator_index[accumulator_pointer]];
     tmp_COO_vals[target_pointer] = w_accumulator.val[w_accumulator_index[accumulator_pointer]];
-    accumulator_pointer ++;
+    if (accumulator_pointer + 1 < accumulator_size && compare(w_accumulator_index[accumulator_pointer + 1], content_pointer, COO1_crd, COO2_crd) == 0) {
+      int accumulator_pointer_tmp = accumulator_pointer + 1;
+      while(accumulator_pointer_tmp < accumulator_size && compare(w_accumulator_index[accumulator_pointer_tmp], content_pointer, COO1_crd, COO2_crd) == 0) {
+        tmp_COO_vals[target_pointer] += w_accumulator.val[w_accumulator_index[accumulator_pointer_tmp]];
+        accumulator_pointer_tmp ++;
+      }
+      accumulator_pointer = accumulator_pointer_tmp;
+    } else {
+      accumulator_pointer ++;
+    }
     target_pointer ++;
   }
   while(content_pointer<COO_size) {
@@ -184,7 +189,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
   int32_t w_accumulator_size = 0;
-  int32_t w_all_capacity = w_acc_capacity; 
+  int32_t w_all_capacity = CAP; 
   int32_t w_all_size = 0;
   int32_t* w1_crd_0 = 0;
   int32_t* w2_crd_0 = 0;
@@ -330,7 +335,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSR_T_coord_index_double(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
+void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
   // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
   vector<int> indptr;
   vector<int> indices;

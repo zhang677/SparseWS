@@ -9,6 +9,8 @@ if __name__ == '__main__':
   parser.add_argument('--input_tran_path', default="/home/nfs_data/zhanggh/SparseWS/data/shift", type=str, help='Store path')
   parser.add_argument('--output_path', default="/home/nfs_data/zhanggh/SparseWS/data/results/bench_eigen_coord.csv", type=str, help='Store path')
   parser.add_argument('--tiles', action='store_true')
+  parser.add_argument('--special', action='store_true')
+  parser.add_argument('--alg', default='hash', type=str, help='Algorithm to use')
   args = parser.parse_args()
 
   cwd = os.getcwd()
@@ -27,10 +29,25 @@ if __name__ == '__main__':
 
   if args.tiles:
       out_file = open(args.output_path, "w")
-      mtxnames = [fname for fname in os.listdir(in_dirname) if fname.endswith(".mtx")]
-      print(mtxnames)
-      mtx_files = [os.path.join(in_dirname, fname) for fname in mtxnames]
-      tran_mtx_files = [os.path.join(in_tran_dirname, fname.replace(".mtx", "-st.mtx")) for fname in mtxnames]
-      subprocess.run(["echo", "name,eigen,coord"], stdout=out_file)
+      
+      if args.special:
+        mtxnames = [fname for fname in os.listdir(in_dirname)]
+        print(mtxnames)
+        mtx_files = [os.path.join(in_dirname, fname, fname+".mtx") for fname in mtxnames]
+        tran_mtx_files = [os.path.join(in_tran_dirname, fname+"-st.mtx") for fname in mtxnames]
+      else:
+        mtxnames = [fname for fname in os.listdir(in_dirname) if fname.endswith(".mtx")]
+        print(mtxnames)
+        mtx_files = [os.path.join(in_dirname, fname) for fname in mtxnames]
+        tran_mtx_files = [os.path.join(in_tran_dirname, fname.replace(".mtx", "-st.mtx")) for fname in mtxnames]
+      subprocess.run(["echo", "name,eigen,coord,speedup"], stdout=out_file)
       for i in range(len(mtx_files)):
-          subprocess.run(["/home/nfs_data/zhanggh/SparseWS/test", mtx_files[i], tran_mtx_files[i]], stdout=out_file)
+          print(mtx_files[i])
+          subprocess.run(["/home/nfs_data/zhanggh/SparseWS/test-"+args.alg, mtx_files[i], tran_mtx_files[i]], stdout=out_file)
+      out_file.close()
+  else:
+      out_file = open(args.output_path, "w")
+      mtx_file = os.path.join(in_dirname, args.name, args.name+".mtx") if args.special else os.path.join(in_dirname, args.name)
+      tran_mtx_file = os.path.join(in_tran_dirname, args.name.replace(".mtx", "-st.mtx"))
+      subprocess.run(["/home/nfs_data/zhanggh/SparseWS/test-"+args.alg, mtx_file, tran_mtx_file])
+      out_file.close()

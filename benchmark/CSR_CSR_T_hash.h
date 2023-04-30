@@ -1,4 +1,5 @@
 #include "../utils/dataloader.h"
+#include <math.h> 
 
 typedef struct {
   int32_t crd[2];
@@ -352,6 +353,7 @@ void CSR_CSR_T_hash(const string& A_name, const string& B_name, taco_tensor_t* C
   read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
   taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
   init_taco_tensor_DC(C, nrow, ncol, {0,1});
+  w_cap = pow(2,int(log2(nnz / 2))); // heuristic
   compute(C,&A,&B,w_cap);
   if (print) {
     print_taco_tensor_DC(&A);

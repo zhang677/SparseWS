@@ -1,15 +1,17 @@
 #include "../utils/dataloader.h"
 #include "../utils/lib.h"
 
-#define w_acc_capacity 3
+#ifndef CAP
+ #define CAP 1048576
+#endif
 #define w_order 2
 
 struct wspace_t {
-  int32_t crd[w_order][w_acc_capacity];
-  float val[w_acc_capacity];
+  int32_t crd[w_order][CAP];
+  float val[CAP];
 };
 wspace_t w_accumulator;
-int32_t w_accumulator_index[w_acc_capacity];
+int32_t w_accumulator_index[CAP];
 
 int esc_cmp_t(const void* a, const void* b) {
   int l = *(int32_t *)a;
@@ -62,9 +64,9 @@ int compare(int32_t l, int32_t r, int32_t* crd0, int32_t* crd1) {
 }
 
 int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* crds, float val) {
-  if (accumulator_size == w_acc_capacity) {
+  if (accumulator_size == CAP) {
     *insertFail = true;
-    return Sort_t(w_acc_capacity, false);
+    return Sort_t(CAP, false);
   } else {
     w_accumulator_index[accumulator_size] = accumulator_size;
     w_accumulator.crd[0][accumulator_size] = crds[0];
@@ -184,7 +186,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
   int32_t w_accumulator_size = 0;
-  int32_t w_all_capacity = w_acc_capacity; 
+  int32_t w_all_capacity = CAP; 
   int32_t w_all_size = 0;
   int32_t* w1_crd_0 = 0;
   int32_t* w2_crd_0 = 0;
@@ -330,7 +332,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-void CSR_CSR_T_coord_index_double(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
+void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
   // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
   vector<int> indptr;
   vector<int> indices;

@@ -163,14 +163,17 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
           //std::cout << "Seperate point: (" << w_point[0]<< "," << w_point[1] << ")" << std::endl;
           // Enlarge
           if(w_accumulator_size + w_all_size > w_all_capacity) {
-            w_all_capacity = w_all_capacity * 2;
-            //std::cout << w_all_capacity << std::endl;
+            w_all_capacity = w_accumulator_size + w_all_size + 1;
+            // std::cout << w_all_capacity << std::endl;
             w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
             w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
             w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
           }
           // Merge
           w_all_size = Merge_coord(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator, w_accumulator_size);
+          free(w_accumulator);
+          w_accumulator_capacity = w_accumulator_capacity * 2;
+          w_accumulator = (wspace*)malloc(sizeof(wspace) * w_accumulator_capacity);
           // Clear
           w_accumulator_size = 0;
           // Insert the wspace that conflicts
@@ -257,7 +260,6 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
 
 void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
   // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
-  std::cout << "CSR_CSR_T_coord" << std::endl;
   vector<int> indptr;
   vector<int> indices;
   vector<int> id_buffer;

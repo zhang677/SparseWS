@@ -1,17 +1,16 @@
 #include "../utils/dataloader.h"
 #include "../utils/lib.h"
 
-#ifndef CAP
- #define CAP 1048576
-#endif
 #define w_order 2
 
+int acc_capacity;
+
 struct wspace_t {
-  int32_t crd[w_order][CAP];
-  float val[CAP];
+  int32_t* crd[w_order];
+  float* val;
 };
 wspace_t w_accumulator;
-int32_t w_accumulator_index[CAP];
+int32_t* w_accumulator_index;
 
 int esc_cmp_t(const void* a, const void* b) {
   int l = *(int32_t *)a;
@@ -64,9 +63,9 @@ int compare(int32_t l, int32_t r, int32_t* crd0, int32_t* crd1) {
 }
 
 int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* crds, float val) {
-  if (accumulator_size == CAP) {
+  if (accumulator_size == acc_capacity) {
     *insertFail = true;
-    return Sort_t(CAP, false);
+    return Sort_t(acc_capacity, false);
   } else {
     w_accumulator_index[accumulator_size] = accumulator_size;
     w_accumulator.crd[0][accumulator_size] = crds[0];
@@ -187,7 +186,7 @@ int compute_coo(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_
   C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
   int32_t w_accumulator_size = 0;
-  int32_t w_all_capacity = CAP; 
+  int32_t w_all_capacity = acc_capacity; 
   int32_t w_all_size = 0;
   int32_t* w1_crd = 0;
   int32_t* w2_crd = 0;
@@ -301,7 +300,17 @@ void CSR_CSR_T_coord(const string& A_name, const string& B_name, taco_tensor_t* 
   read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
   taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
   init_taco_tensor_DC(C, nrow, ncol, {0,1});
+  w_cap = pow(2,int(log2(nnz / 2))); // heuristic
+  acc_capacity = w_cap;
+  w_accumulator.crd[0] = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
+  w_accumulator.crd[1] = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
+  w_accumulator.val = (float*)malloc(sizeof(float) * acc_capacity);
+  w_accumulator_index = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
   compute_coo(C,&A,&B,w_cap);
+  free(w_accumulator.crd[0]);
+  free(w_accumulator.crd[1]);
+  free(w_accumulator.val);
+  free(w_accumulator_index);
   if (print) {
     print_taco_tensor_DC(&A);
     print_taco_tensor_DC(&B);
