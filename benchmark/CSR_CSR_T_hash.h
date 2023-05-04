@@ -65,6 +65,7 @@ int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t CO
   int content_pointer = 0;
   int target_pointer = 0;
   wspace tmp_con;
+  std::cout << "Acc size: " << accumulator_size << ", COO size: " << COO_size << std::endl;
   while(accumulator_pointer < accumulator_size && content_pointer < COO_size) {
     tmp_con.crd[0] = COO1_crd[content_pointer];
     tmp_con.crd[1] = COO2_crd[content_pointer];
@@ -339,25 +340,24 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
   return 0;
 }
 
-void CSR_CSR_T_hash(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, bool print = false) {
+//double CSR_CSR_T_hash(const string& A_name, const string& B_name, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t bench, bool print = false) {
+double CSR_CSR_T_hash(taco_tensor_t &A, taco_tensor_t &B, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t bench, bool print = false) {
   // C(k,i) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
-  vector<int> indptr;
-  vector<int> indices;
-  vector<int> id_buffer;
-  vector<float> value;
-  int nrow;
-  int ncol;
-  int nnz;
-  read_mtx_csr(A_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-  taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-  read_mtx_csr(B_name.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
-  taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
-  init_taco_tensor_DC(C, nrow, ncol, {0,1});
   w_cap = pow(2,int(log2(nnz / 2))); // heuristic
-  compute(C,&A,&B,w_cap);
+  std::cout << "Capacity: " << w_cap << std::endl;
+  for (int i = 0; i < warmup; i++) {
+    compute(C,&A,&B,w_cap);
+  }
+  double start = clock();
+  for (int i = 0; i < bench; i++) {
+    compute(C,&A,&B,w_cap);
+  }
+  double end = clock();
+  double duration = (double)(end - start) / (CLOCKS_PER_SEC * bench);
   if (print) {
     print_taco_tensor_DC(&A);
     print_taco_tensor_DC(&B);
     print_taco_tensor_DC(C);
   }
+  return duration;
 }

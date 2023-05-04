@@ -3,6 +3,7 @@
 
 #include "lib.h"
 #include "mmio.h"
+#include <time.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
@@ -145,25 +146,117 @@ void transpose(Index ncol, std::vector<Index> &row, std::vector<Index> &col,
   delete[] col_tmp;
 }
 
+// void read_mtx_csc(const char *filename, int &nrow, int &ncol, int &nnz,
+//                    std::vector<int> &csc_indptr_buffer,
+//                    std::vector<int> &csc_indices_buffer,
+//                    std::vector<int> &coo_colind_buffer,
+//                    std::vector<float> &csc_value_buffer) {
+//   read_mtx_csr(filename, nrow, ncol, nnz, csc_indptr_buffer, csc_indices_buffer, coo_colind_buffer, csc_value_buffer);
+
+//   EigenCSC temp = to_eigen_csc(nrow, ncol, nnz, coo_colind_buffer, csc_indices_buffer, csc_value_buffer);
+//   csc_indptr_buffer.clear();
+//   csc_indices_buffer.clear();
+//   csc_value_buffer.clear();
+//   for (int k = 0; k <= ncol; k++) {
+//     csc_indptr_buffer.push_back(temp.outerIndexPtr()[k]);
+//   }
+//   for (int k = 0; k < nnz; k++) {
+//     csc_indices_buffer.push_back(temp.innerIndexPtr()[k]);
+//     csc_value_buffer.push_back(temp.valuePtr()[k]);
+//   }
+
+// }
+
+// Load sparse matrix from an mtx file. Only non-zero positions are loaded,
+// and values are dropped.
 void read_mtx_csc(const char *filename, int &nrow, int &ncol, int &nnz,
                    std::vector<int> &csc_indptr_buffer,
                    std::vector<int> &csc_indices_buffer,
                    std::vector<int> &coo_colind_buffer,
                    std::vector<float> &csc_value_buffer) {
-  read_mtx_csr(filename, nrow, ncol, nnz, csc_indptr_buffer, csc_indices_buffer, coo_colind_buffer, csc_value_buffer);
+  FILE *f;
 
-  EigenCSC temp = to_eigen_csc(nrow, ncol, nnz, coo_colind_buffer, csc_indices_buffer, csc_value_buffer);
+  if ((f = fopen(filename, "r")) == NULL) {
+    printf("File %s not found", filename);
+    exit(EXIT_FAILURE);
+  }
+
+  MM_typecode matcode;
+  // Read MTX banner
+  if (mm_read_banner(f, &matcode) != 0) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (mm_read_mtx_crd_size(f, &nrow, &ncol, &nnz) != 0) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+  // printf("Reading matrix %d rows, %d columns, %d nnz.\n", nrow, ncol, nnz);
+
+  /// read tuples
+  csc_value_buffer.clear();
+  std::vector<std::tuple<int, int>> coords;
+  int row_id, col_id;
+  float dummy;
+  for (int64_t i = 0; i < nnz; i++) {
+    if (fscanf(f, "%d", &row_id) == EOF) {
+      std::cout << "Error: not enough rows in mtx file.\n";
+      exit(EXIT_FAILURE);
+    } else {
+      fscanf(f, "%d", &col_id);
+      if (mm_is_integer(matcode) || mm_is_real(matcode)) {
+        fscanf(f, "%f", &dummy);
+      } else if (mm_is_complex(matcode)) {
+        fscanf(f, "%f", &dummy);
+        fscanf(f, "%f", &dummy);
+      }
+      // mtx format is 1-based
+      coords.push_back(std::make_tuple(col_id - 1, row_id - 1));
+      csc_value_buffer.push_back(dummy);
+    }
+  }
+
+  /// make symmetric
+
+  if (mm_is_symmetric(matcode)) {
+    std::vector<std::tuple<int, int>> new_coords;
+    for (auto iter = coords.begin(); iter != coords.end(); iter++) {
+      int i = std::get<0>(*iter);
+      int j = std::get<1>(*iter);
+      if (i != j) {
+        new_coords.push_back(std::make_tuple(i, j));
+        new_coords.push_back(std::make_tuple(j, i));
+      } else
+        new_coords.push_back(std::make_tuple(i, j));
+    }
+    std::sort(new_coords.begin(), new_coords.end());
+    coords.clear();
+    for (auto iter = new_coords.begin(); iter != new_coords.end(); iter++) {
+      if ((iter + 1) == new_coords.end() || (*iter != *(iter + 1))) {
+        coords.push_back(*iter);
+      }
+    }
+  } else {
+    std::sort(coords.begin(), coords.end());
+  }
+  /// generate csr from coo
+
   csc_indptr_buffer.clear();
   csc_indices_buffer.clear();
-  csc_value_buffer.clear();
-  for (int k = 0; k <= ncol; k++) {
-    csc_indptr_buffer.push_back(temp.outerIndexPtr()[k]);
-  }
-  for (int k = 0; k < nnz; k++) {
-    csc_indices_buffer.push_back(temp.innerIndexPtr()[k]);
-    csc_value_buffer.push_back(temp.valuePtr()[k]);
-  }
+  
 
+  int curr_pos = 0;
+  csc_indptr_buffer.push_back(0);
+  for (int64_t col = 0; col < ncol; col++) {
+    while ((curr_pos < nnz) && (std::get<0>(coords[curr_pos]) == col)) {
+      csc_indices_buffer.push_back(std::get<1>(coords[curr_pos]));
+      coo_colind_buffer.push_back(std::get<0>(coords[curr_pos]));
+      curr_pos++;
+    }
+    // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
+    csc_indptr_buffer.push_back(curr_pos);
+  }
+  nnz = csc_indices_buffer.size();
 }
 
 
@@ -193,6 +286,33 @@ taco_tensor_t DC_to_taco_tensor(std::vector<int> &indptr_buffer,std::vector<int>
     return t;
 
 }
+
+taco_tensor_t DC_to_taco_tensor(int* indptr_buffer, int* indices_buffer,
+                                float* value_buffer,int nrow,int ncol,int nnz, vector<int> mode_ordering) {
+    taco_tensor_t t;
+    t.order = 2;
+    t.mode_ordering = new int32_t[2];
+    t.mode_ordering[0] = mode_ordering[0];
+    t.mode_ordering[1] = mode_ordering[1];
+    t.dimensions = new int32_t[2];
+    t.dimensions[0] = nrow;
+    t.dimensions[1] = ncol;
+    t.indices = new int32_t**[2];
+    t.indices[0] = new int32_t*[1];
+    t.indices[1] = new int32_t*[2];
+    t.indices[0][0] = new int32_t[1];
+    t.indices[1][0] = new int32_t[(t.dimensions[mode_ordering[0]]+1)];
+    t.indices[1][1] = new int32_t[nnz];
+    t.vals = new float[nnz];
+    t.vals_size = nnz;
+
+    t.indices[0][0][0] = t.dimensions[mode_ordering[0]];
+    memcpy(t.indices[1][0], indptr_buffer, (t.dimensions[mode_ordering[0]]+1)*sizeof(int32_t));
+    memcpy(t.indices[1][1], indices_buffer, nnz*sizeof(int32_t));
+    memcpy(t.vals, value_buffer, nnz*sizeof(float));
+    return t;
+}
+
 
 void init_taco_tensor_DC(taco_tensor_t* t, int nrow, int ncol, vector<int> mode_ordering){
     t->order = 2;
@@ -311,7 +431,17 @@ void print_taco_tensor_CC(taco_tensor_t* t) {
 void check_csr_taco_eigen(taco_tensor_t& C, EigenCSR& C_true){
   int row = C_true.outerSize();
   int nnz = C_true.outerIndexPtr()[row];
-  cout << "row: " << (C.indices[0][0][0] == row ? "True" : "False") << endl;
+  cout << "row: " << C.indices[0][0][0] << " , " << row << (C.indices[0][0][0] == row ? "True" : "False") << endl;
+  cout << "nnz: " << (C.indices[1][0][C.indices[0][0][0]] == nnz ? "True": "False") << endl;
+  compare_array<int>(C.indices[1][0], C_true.outerIndexPtr(), row + 1);
+  compare_array<int>(C.indices[1][1], C_true.innerIndexPtr(), nnz);
+  compare_array<float>(C.vals, C_true.valuePtr(), nnz);
+}
+
+void check_csc_taco_eigen(taco_tensor_t& C, EigenCSC& C_true){
+  int row = C_true.outerSize();
+  int nnz = C_true.outerIndexPtr()[row];
+  cout << "row: " << C.indices[0][0][0] << " , " << row << (C.indices[0][0][0] == row ? "True" : "False") << endl;
   cout << "nnz: " << (C.indices[1][0][C.indices[0][0][0]] == nnz ? "True": "False") << endl;
   compare_array<int>(C.indices[1][0], C_true.outerIndexPtr(), row + 1);
   compare_array<int>(C.indices[1][1], C_true.innerIndexPtr(), nnz);

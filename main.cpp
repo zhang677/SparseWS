@@ -13,12 +13,16 @@
 //#include "benchmark/CSR_CSR_T_coord_index.h"
 //#include "benchmark/CSR_CSR_T_coord_index_flex.h"
 //#include "benchmark/CSR_CSR_T_hash.h"
+#include "benchmark/CSR_CSR_T_hash_flex.h"
 //#include "benchmark/CSR_CSR_T_hash_index.h"
-#include "benchmark/CSR_CSR_T_map.h"
+//#include "benchmark/CSR_CSR_T_map.h"
 #include "benchmark/CSR_CSR_T_eigen.h"
+//#include "benchmark/CSC_CSR_T_hash_flex.h"
+//#include "benchmark/CSC_CSR_T_eigen.h"
 #include <iostream>
 #include <time.h>
 #include <string>
+#include <fstream>
 using namespace std;
 
 // void check_eigen_coord(const string filename1, const string filename2, const int repeat, const int w_cap) {
@@ -29,16 +33,78 @@ using namespace std;
 //     check_csr_taco_eigen(C, C_true);
 // }
 
-// void check_eigen_hash(const string filename1, const string filename2, const int repeat, const int w_cap, bool verbose) {
+void check_eigen_hash(const string filename1, const string filename2, const int repeat, int w_cap, bool verbose) {
+    taco_tensor_t C;
+    EigenCSR C_true;
+    vector<int> indptr;
+    vector<int> indices;
+    vector<int> id_buffer;
+    vector<float> value;
+    int nrow;
+    int ncol;
+    int nnz;
+    read_mtx_csr(filename1.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    EigenCSR A_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value);
+    indptr.clear();
+    id_buffer.clear();
+    indices.clear();
+    value.clear();
+    read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    EigenCSR B_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, false);
+    init_taco_tensor_DC(&C, ncol, ncol, {0,1});
+
+    std::cout << "Eigen" << std::endl;
+    w_cap = pow(2,int(log2(nnz * 4))); // heuristic
+    CSR_CSR_T_Eigen(A_true, B_true, C_true, 0, 1, verbose);
+    std::cout << "Hash" << std::endl;
+    CSR_CSR_T_hash(&A, &B, &C, w_cap, 0, 1, verbose);
+    check_csr_taco_eigen(C, C_true);
+}
+
+// void check_eigen_hash_outer(const string filename1, const string filename2, const int repeat, int w_cap, bool verbose) {
 //     taco_tensor_t C;
 //     EigenCSR C_true;
+//     vector<int> indptr;
+//     vector<int> indices;
+//     vector<int> id_buffer;
+//     vector<float> value;
+//     int nrow;
+//     int ncol;
+//     int nnz;
+//     read_mtx_csr(filename1.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+//     EigenCSC A_true = to_eigen_csc(nrow, ncol, nnz, id_buffer, indices, value);
+//     // print_eigen_csc(A_true);
+//     indptr.clear();
+//     id_buffer.clear();
+//     indices.clear();
+//     value.clear();
+//     taco_tensor_t A = DC_to_taco_tensor(A_true.outerIndexPtr(),A_true.innerIndexPtr(),A_true.valuePtr(),nrow,ncol,nnz,{1,0});
+//     //print_taco_tensor_DC(&A);
+//     indptr.clear();
+//     id_buffer.clear();
+//     indices.clear();
+//     value.clear();
+//     read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+//     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+//     EigenCSR B_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, false);
+//     init_taco_tensor_DC(&C, ncol, ncol, {0,1});
+
 //     std::cout << "Eigen" << std::endl;
-//     CSR_CSR_T_Eigen(filename1, filename2, C_true, verbose);
-//     //CSR_CSR_5(filename1, filename2, &C, w_cap);
+//     CSC_CSR_T_Eigen(A_true, B_true, C_true, 0, 1, verbose);
+//     int outSize = C_true.outerSize();
+//     std::cout << "Output sparsity " << double(C_true.outerIndexPtr()[outSize]) / double(outSize * outSize) << std::endl;
+
 //     std::cout << "Hash" << std::endl;
-//     CSR_CSR_T_hash(filename1, filename2, &C, w_cap, verbose);
+//     w_cap = pow(2,int(log2(nnz * 4))); // heuristic
+//     //w_cap = pow(2,int(log2(nnz))); // heuristic
+//     //w_cap = ncol * ncol;
+//     CSC_CSR_T_hash(&A, &B, &C, w_cap, 0, 1, verbose);
+
 //     check_csr_taco_eigen(C, C_true);
 // }
+
 // void check_eigen_map(const string filename1, const string filename2, const int repeat, const int w_cap, bool verbose) {
 //     taco_tensor_t C;
 //     EigenCSR C_true;
@@ -116,7 +182,47 @@ using namespace std;
 //     std::cout << result2[0] << "," << duration_eigen << "," << duration_taco << "," << duration_eigen / duration_taco << std::endl;
 // }
 
-// void benchmark_eigen_hash(const string filename1, const string filename2, const int repeat, const int w_cap) {
+// void benchmark_eigen_hash(const string filename1, const string filename2, const int repeat, int w_cap, const string& result_name) {
+//     taco_tensor_t C;
+//     EigenCSR C_true;
+//     vector<int> indptr;
+//     vector<int> indices;
+//     vector<int> id_buffer;
+//     vector<float> value;
+//     int nrow;
+//     int ncol;
+//     int nnz;
+//     read_mtx_csr(filename1.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+//     taco_tensor_t A = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+//     EigenCSR A_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, false);
+//     indptr.clear();
+//     id_buffer.clear();
+//     indices.clear();
+//     value.clear();
+//     read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+//     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+//     EigenCSR B_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, false);
+//     init_taco_tensor_DC(&C, ncol, ncol, {0,1});
+//     const int warmup = 5;
+
+//     vector<string> result;
+//     boost::split(result, filename1, boost::is_any_of("/"));
+//     vector<string> result2;
+//     boost::split(result2, result[result.size()-1], boost::is_any_of("."));
+
+//     std::ofstream outfile;
+//     outfile.open(result_name, std::ios_base::app);
+
+//     w_cap = pow(2,int(log2(nnz / 2))); // heuristic
+//     double duration_eigen = CSR_CSR_T_Eigen(A_true, B_true, C_true, warmup, repeat);
+//     double duration_taco = CSR_CSR_T_hash(&A, &B, &C, w_cap, warmup, repeat);
+
+//     std::cout << result2[0] << "," << duration_eigen << "," << duration_taco << "," << duration_eigen / duration_taco << std::endl;
+//     outfile << result2[0] << "," << duration_eigen << "," << duration_taco << "," << duration_eigen / duration_taco << std::endl;
+//     outfile.close();
+// }
+
+// void benchmark_eigen_map(const string filename1, const string filename2, const int repeat, const int w_cap) {
 //     taco_tensor_t C;
 //     clock_t start, finish;
 //     double duration_eigen, duration_taco;
@@ -127,62 +233,53 @@ using namespace std;
 //     vector<string> result2;
 //     boost::split(result2, result[result.size()-1], boost::is_any_of("."));
 
-//     EigenCSR C_true;
-//     for (int i = 0; i < warmup; i++) {
-//         CSR_CSR_T_Eigen(filename1, filename2, C_true);
-//     }
-//     start = clock();
-//     for (int i = 0; i < repeat; i++) { 
-//         CSR_CSR_T_Eigen(filename1, filename2, C_true);
-//     }
-//     finish = clock();
-//     duration_eigen = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
-
-//     for (int i = 0; i < warmup; i++) {
-//         CSR_CSR_T_hash(filename1, filename2, &C, w_cap);
-//     }
-//     start = clock();
-//     for (int i = 0; i < repeat; i++) { 
-//         CSR_CSR_T_hash(filename1, filename2, &C, w_cap);
-//     }
-//     finish = clock();
-//     duration_taco = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
+//     double duration_eigen = CSR_CSR_T_Eigen(filename1, filename2, C_true, warmup, repeat);
+//     duration_taco = CSR_CSR_T_map(filename1, filename2, &C, w_cap, warmup, repeat);
 //     std::cout << result2[0] << "," << duration_eigen << "," << duration_taco << "," << duration_eigen / duration_taco << std::endl;
 // }
 
-void benchmark_eigen_map(const string filename1, const string filename2, const int repeat, const int w_cap) {
-    taco_tensor_t C;
-    clock_t start, finish;
-    double duration_eigen, duration_taco;
-    const int warmup = 5;
+// void benchmark_eigen_hash_outer(const string filename1, const string filename2, const int repeat, int w_cap, bool verbose) {
+//     taco_tensor_t C;
+//     EigenCSR C_true;
+//     vector<int> indptr;
+//     vector<int> indices;
+//     vector<int> id_buffer;
+//     vector<float> value;
+//     int nrow;
+//     int ncol;
+//     int nnz;
+//     read_mtx_csr(filename1.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+//     EigenCSC A_true = to_eigen_csc(nrow, ncol, nnz, id_buffer, indices, value);
+//     // print_eigen_csc(A_true);
+//     indptr.clear();
+//     id_buffer.clear();
+//     indices.clear();
+//     value.clear();
+//     taco_tensor_t A = DC_to_taco_tensor(A_true.outerIndexPtr(),A_true.innerIndexPtr(),A_true.valuePtr(),nrow,ncol,nnz,{1,0});
+//     //print_taco_tensor_DC(&A);
+//     indptr.clear();
+//     id_buffer.clear();
+//     indices.clear();
+//     value.clear();
+//     read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+//     taco_tensor_t B = DC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+//     EigenCSR B_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, false);
+//     init_taco_tensor_DC(&C, ncol, ncol, {0,1});
 
-    vector<string> result;
-    boost::split(result, filename1, boost::is_any_of("/"));
-    vector<string> result2;
-    boost::split(result2, result[result.size()-1], boost::is_any_of("."));
+//     clock_t start, finish;
+//     double duration_eigen, duration_taco;
+//     const int warmup = 5;
 
-    EigenCSR C_true;
-    for (int i = 0; i < warmup; i++) {
-        CSR_CSR_T_Eigen(filename1, filename2, C_true);
-    }
-    start = clock();
-    for (int i = 0; i < repeat; i++) { 
-        CSR_CSR_T_Eigen(filename1, filename2, C_true);
-    }
-    finish = clock();
-    duration_eigen = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
+//     vector<string> result;
+//     boost::split(result, filename1, boost::is_any_of("/"));
+//     vector<string> result2;
+//     boost::split(result2, result[result.size()-1], boost::is_any_of("."));
 
-    for (int i = 0; i < warmup; i++) {
-        CSR_CSR_T_map(filename1, filename2, &C, w_cap);
-    }
-    start = clock();
-    for (int i = 0; i < repeat; i++) { 
-        CSR_CSR_T_map(filename1, filename2, &C, w_cap);
-    }
-    finish = clock();
-    duration_taco = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
-    std::cout << result2[0] << "," << duration_eigen << "," << duration_taco << "," << duration_eigen / duration_taco << std::endl;
-}
+//     w_cap = pow(2,int(log2(nnz / 2))); // heuristic
+//     duration_taco = CSC_CSR_T_hash(&A, &B, &C, w_cap, warmup, repeat);
+//     duration_eigen = CSC_CSR_T_Eigen(A_true, B_true, C_true, warmup, repeat);
+//     std::cout << result2[0] << "," << duration_eigen << "," << duration_taco << "," << duration_eigen / duration_taco << std::endl;
+// }
 
 int main(int argc, char* argv[]) {
     const string filename1 = (argc > 1) ? argv[1] : "./data/test5.mtx";
@@ -190,12 +287,16 @@ int main(int argc, char* argv[]) {
     const int repeat = (argc > 3) ? stoi(argv[3]) : 10;
     const int w_cap = (argc > 4) ? stoi(argv[4]) : 16;
     const int verbose = (argc > 5) ? stoi(argv[5]) : 0;
+    const string result_name = (argc > 6) ? argv[2] : "./data/test.csv";
 
+    
     //benchmark_eigen_coord(filename1, filename2, repeat, w_cap);
-    //benchmark_eigen_hash(filename1, filename2, repeat, w_cap);
-    benchmark_eigen_map(filename1, filename2, repeat, w_cap);
-    //check_eigen_hash(filename1, filename2, repeat, w_cap, verbose);
+    //benchmark_eigen_hash(filename1, filename2, repeat, w_cap, result_name);
+    //benchmark_eigen_map(filename1, filename2, repeat, w_cap);
+    
+    check_eigen_hash(filename1, filename2, repeat, w_cap, verbose);
     //check_eigen_coord(filename1, filename2, repeat, w_cap);
     //check_eigen_map(filename1, filename2, repeat, w_cap, verbose);
+    //check_eigen_hash_outer(filename1, filename2, repeat, w_cap, verbose);
     return 0;    
 }

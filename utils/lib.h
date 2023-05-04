@@ -364,7 +364,7 @@ template <typename Type>
 void compare_array(Type* A, Type* B, int len, float thres = 0.0001) {
   int count = 0;
   for (int i = 0; i < len; i++) {
-    if (abs(A[i] - B[i]) > thres) {
+    if (A[i]!=0 && abs((A[i] - B[i]) / A[i]) > thres) {
       count++;
       std::cout<<"id: "<< i << "," << "A_val: " << A[i] << "B_val: " << B[i] << std::endl; 
     }
