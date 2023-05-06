@@ -140,8 +140,8 @@ void copy_buffer(HashTable* accumulator) {
   }
 }
 
-int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, float val) {
-  int hashkey = hash_func(crds[0] + crds[1], accumulator->table_size);
+int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, float val, int dimension) {
+  int hashkey = hash_func(crds[0] * dimension + crds[1], accumulator->table_size);
   wspace tmp;
   tmp.crd[0] = crds[0];
   tmp.crd[1] = crds[1];
@@ -226,7 +226,6 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
     C2_pos[pC2] = 0;
   }
 
-
   HashTable w_accumulator;
   init_hashTable(&w_accumulator, w_accumulator_capacity);
   int32_t w_all_capacity = w_accumulator_capacity;
@@ -254,7 +253,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
       for (int32_t kB = B2_pos[j]; kB < B2_pos[(j + 1)]; kB++) {
         int32_t k = B2_crd[kB];
         w_point[0] = k;
-        TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[jA] * B_vals[kB]));
+        TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[jA] * B_vals[kB]), B2_dimension);
         // print_array(w1_crd, w_all_size);
         // print_array(w2_crd, w_all_size);
         // print_array(w_vals, w_all_size);
@@ -267,7 +266,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
           }
           w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
           refresh_wspace(&w_accumulator);
-          TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[jA] * B_vals[kB]));
+          TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[jA] * B_vals[kB]), B2_dimension);
         }
       }
     }

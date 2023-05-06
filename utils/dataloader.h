@@ -41,10 +41,15 @@ void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
     printf("Could not process this file.\n");
     exit(EXIT_FAILURE);
   }
+  if (!mm_is_matrix(matcode) || !mm_is_sparse(matcode) ||
+      !mm_is_coordinate(matcode)) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
   // printf("Reading matrix %d rows, %d columns, %d nnz.\n", nrow, ncol, nnz);
 
   /// read tuples
-  csr_value_buffer.clear();
+  std::vector<float> value_temp;
   std::vector<std::tuple<int, int>> coords;
   int row_id, col_id;
   float dummy;
@@ -54,59 +59,89 @@ void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
       exit(EXIT_FAILURE);
     } else {
       fscanf(f, "%d", &col_id);
-      if (mm_is_integer(matcode) || mm_is_real(matcode)) {
-        fscanf(f, "%f", &dummy);
-      } else if (mm_is_complex(matcode)) {
-        fscanf(f, "%f", &dummy);
-        fscanf(f, "%f", &dummy);
-      }
+      fscanf(f, "%f", &dummy);
       // mtx format is 1-based
       coords.push_back(std::make_tuple(row_id - 1, col_id - 1));
-      csr_value_buffer.push_back(dummy);
+      value_temp.push_back(dummy);
     }
   }
 
   /// make symmetric
-
+  std::vector<int> index;
+  std::vector<float> new_value;
+  std::vector<std::tuple<int, int>> new_coords;
   if (mm_is_symmetric(matcode)) {
-    std::vector<std::tuple<int, int>> new_coords;
+    int cur_nz = 0;
+    int cur_ptr = 0;
     for (auto iter = coords.begin(); iter != coords.end(); iter++) {
       int i = std::get<0>(*iter);
       int j = std::get<1>(*iter);
       if (i != j) {
         new_coords.push_back(std::make_tuple(i, j));
+        index.push_back(cur_nz);
+        new_value.push_back(value_temp[cur_ptr]);
+        cur_nz++;
         new_coords.push_back(std::make_tuple(j, i));
-      } else
+        index.push_back(cur_nz);
+        new_value.push_back(value_temp[cur_ptr]);
+        cur_nz++;
+      } else {
         new_coords.push_back(std::make_tuple(i, j));
-    }
-    std::sort(new_coords.begin(), new_coords.end());
-    coords.clear();
-    for (auto iter = new_coords.begin(); iter != new_coords.end(); iter++) {
-      if ((iter + 1) == new_coords.end() || (*iter != *(iter + 1))) {
-        coords.push_back(*iter);
+        index.push_back(cur_nz);
+        new_value.push_back(value_temp[cur_ptr]);
+        cur_nz++;
       }
+      cur_ptr++;
     }
+    //std::sort(new_coords.begin(), new_coords.end());
+    std::sort(index.begin(), index.end(),
+              [&new_coords](int i1, int i2) {
+                return std::get<0>(new_coords[i1]) == std::get<0>(new_coords[i2]) ? std::get<1>(new_coords[i1]) < std::get<1>(new_coords[i2]) : std::get<0>(new_coords[i1]) < std::get<0>(new_coords[i2]);
+              });
+    nnz = cur_nz;
   } else {
-    std::sort(coords.begin(), coords.end());
+    boost::range::push_back(index, boost::irange(0, nnz));
+    std::sort(index.begin(), index.end(),
+          [&coords](int i1, int i2) {
+            return std::get<0>(coords[i1]) == std::get<0>(coords[i2]) ? std::get<1>(coords[i1]) < std::get<1>(coords[i2]) : std::get<0>(coords[i1]) < std::get<0>(coords[i2]);
+          });
   }
   /// generate csr from coo
 
   csr_indptr_buffer.clear();
   csr_indices_buffer.clear();
-  
+  csr_value_buffer.clear();
+  coo_rowind_buffer.clear();
 
   int curr_pos = 0;
   csr_indptr_buffer.push_back(0);
-  for (int64_t row = 0; row < nrow; row++) {
-    while ((curr_pos < nnz) && (std::get<0>(coords[curr_pos]) == row)) {
-      csr_indices_buffer.push_back(std::get<1>(coords[curr_pos]));
-      coo_rowind_buffer.push_back(std::get<0>(coords[curr_pos]));
-      curr_pos++;
+  if (mm_is_symmetric(matcode)) {
+    for (int64_t row = 0; row < nrow; row++) {
+      while ((curr_pos < nnz) && (std::get<0>(new_coords[index[curr_pos]]) == row)) {
+        csr_indices_buffer.push_back(std::get<1>(new_coords[index[curr_pos]]));
+        coo_rowind_buffer.push_back(std::get<0>(new_coords[index[curr_pos]]));
+        //csr_value_buffer.push_back(new_value[index[curr_pos]]);
+        csr_value_buffer.push_back((float)rand()/RAND_MAX);
+        curr_pos++;
+      }
+      // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
+      csr_indptr_buffer.push_back(curr_pos);
     }
-    // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
-    csr_indptr_buffer.push_back(curr_pos);
+  } else {
+    for (int64_t row = 0; row < nrow; row++) {
+      while ((curr_pos < nnz) && (std::get<0>(coords[index[curr_pos]]) == row)) {
+        csr_indices_buffer.push_back(std::get<1>(coords[index[curr_pos]]));
+        coo_rowind_buffer.push_back(std::get<0>(coords[index[curr_pos]]));
+        //csr_value_buffer.push_back(value_temp[index[curr_pos]]);
+        csr_value_buffer.push_back((float)rand()/RAND_MAX);
+        curr_pos++;
+      }
+      // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
+      csr_indptr_buffer.push_back(curr_pos);
+    }
   }
   nnz = csr_indices_buffer.size();
+  fclose(f);
 }
 
 template <typename Index>
@@ -172,7 +207,7 @@ void transpose(Index ncol, std::vector<Index> &row, std::vector<Index> &col,
 void read_mtx_csc(const char *filename, int &nrow, int &ncol, int &nnz,
                    std::vector<int> &csc_indptr_buffer,
                    std::vector<int> &csc_indices_buffer,
-                   std::vector<int> &coo_colind_buffer,
+                   std::vector<int> &coo_rowind_buffer,
                    std::vector<float> &csc_value_buffer) {
   FILE *f;
 
@@ -191,10 +226,15 @@ void read_mtx_csc(const char *filename, int &nrow, int &ncol, int &nnz,
     printf("Could not process this file.\n");
     exit(EXIT_FAILURE);
   }
+  if (!mm_is_matrix(matcode) || !mm_is_sparse(matcode) ||
+      !mm_is_coordinate(matcode)) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
   // printf("Reading matrix %d rows, %d columns, %d nnz.\n", nrow, ncol, nnz);
 
   /// read tuples
-  csc_value_buffer.clear();
+  std::vector<float> value_temp;
   std::vector<std::tuple<int, int>> coords;
   int row_id, col_id;
   float dummy;
@@ -204,59 +244,89 @@ void read_mtx_csc(const char *filename, int &nrow, int &ncol, int &nnz,
       exit(EXIT_FAILURE);
     } else {
       fscanf(f, "%d", &col_id);
-      if (mm_is_integer(matcode) || mm_is_real(matcode)) {
-        fscanf(f, "%f", &dummy);
-      } else if (mm_is_complex(matcode)) {
-        fscanf(f, "%f", &dummy);
-        fscanf(f, "%f", &dummy);
-      }
+      fscanf(f, "%f", &dummy);
       // mtx format is 1-based
-      coords.push_back(std::make_tuple(col_id - 1, row_id - 1));
-      csc_value_buffer.push_back(dummy);
+      coords.push_back(std::make_tuple(row_id - 1, col_id - 1));
+      value_temp.push_back(dummy);
     }
   }
 
   /// make symmetric
-
+  std::vector<int> index;
+  std::vector<float> new_value;
+  std::vector<std::tuple<int, int>> new_coords;
   if (mm_is_symmetric(matcode)) {
-    std::vector<std::tuple<int, int>> new_coords;
+    int cur_nz = 0;
+    int cur_ptr = 0;
     for (auto iter = coords.begin(); iter != coords.end(); iter++) {
       int i = std::get<0>(*iter);
       int j = std::get<1>(*iter);
       if (i != j) {
         new_coords.push_back(std::make_tuple(i, j));
+        index.push_back(cur_nz);
+        new_value.push_back(value_temp[cur_ptr]);
+        cur_nz++;
         new_coords.push_back(std::make_tuple(j, i));
-      } else
+        index.push_back(cur_nz);
+        new_value.push_back(value_temp[cur_ptr]);
+        cur_nz++;
+      } else {
         new_coords.push_back(std::make_tuple(i, j));
-    }
-    std::sort(new_coords.begin(), new_coords.end());
-    coords.clear();
-    for (auto iter = new_coords.begin(); iter != new_coords.end(); iter++) {
-      if ((iter + 1) == new_coords.end() || (*iter != *(iter + 1))) {
-        coords.push_back(*iter);
+        index.push_back(cur_nz);
+        new_value.push_back(value_temp[cur_ptr]);
+        cur_nz++;
       }
+      cur_ptr++;
     }
+    //std::sort(new_coords.begin(), new_coords.end());
+    std::sort(index.begin(), index.end(),
+              [&new_coords](int i1, int i2) {
+                return std::get<0>(new_coords[i1]) == std::get<0>(new_coords[i2]) ? std::get<1>(new_coords[i1]) < std::get<1>(new_coords[i2]) : std::get<0>(new_coords[i1]) < std::get<0>(new_coords[i2]);
+              });
+    nnz = cur_nz;
   } else {
-    std::sort(coords.begin(), coords.end());
+    boost::range::push_back(index, boost::irange(0, nnz));
+    std::sort(index.begin(), index.end(),
+          [&coords](int i1, int i2) {
+            return std::get<0>(coords[i1]) == std::get<0>(coords[i2]) ? std::get<1>(coords[i1]) < std::get<1>(coords[i2]) : std::get<0>(coords[i1]) < std::get<0>(coords[i2]);
+          });
   }
   /// generate csr from coo
 
   csc_indptr_buffer.clear();
   csc_indices_buffer.clear();
-  
+  csc_value_buffer.clear();
+  coo_rowind_buffer.clear();
 
   int curr_pos = 0;
   csc_indptr_buffer.push_back(0);
-  for (int64_t col = 0; col < ncol; col++) {
-    while ((curr_pos < nnz) && (std::get<0>(coords[curr_pos]) == col)) {
-      csc_indices_buffer.push_back(std::get<1>(coords[curr_pos]));
-      coo_colind_buffer.push_back(std::get<0>(coords[curr_pos]));
-      curr_pos++;
+  if (mm_is_symmetric(matcode)) {
+    for (int64_t col = 0; col < ncol; col++) {
+      while ((curr_pos < nnz) && (std::get<0>(new_coords[index[curr_pos]]) == col)) {
+        csc_indices_buffer.push_back(std::get<1>(new_coords[index[curr_pos]]));
+        coo_rowind_buffer.push_back(std::get<0>(new_coords[index[curr_pos]]));
+        //csc_value_buffer.push_back(new_value[index[curr_pos]]);
+        csc_value_buffer.push_back((float)rand()/RAND_MAX);
+        curr_pos++;
+      }
+      // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
+      csc_indptr_buffer.push_back(curr_pos);
     }
-    // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
-    csc_indptr_buffer.push_back(curr_pos);
+  } else {
+    for (int64_t col = 0; col < ncol; col++) {
+      while ((curr_pos < nnz) && (std::get<0>(coords[index[curr_pos]]) == col)) {
+        csc_indices_buffer.push_back(std::get<1>(coords[index[curr_pos]]));
+        coo_rowind_buffer.push_back(std::get<0>(coords[index[curr_pos]]));
+        //csc_value_buffer.push_back(value_temp[index[curr_pos]]);
+        csc_value_buffer.push_back((float)rand()/RAND_MAX);
+        curr_pos++;
+      }
+      // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
+      csc_indptr_buffer.push_back(curr_pos);
+    }
   }
   nnz = csc_indices_buffer.size();
+  fclose(f);
 }
 
 
@@ -334,8 +404,8 @@ void init_taco_tensor_DC(taco_tensor_t* t, int nrow, int ncol, vector<int> mode_
 void print_taco_tensor_DC(taco_tensor_t* t) {
     cout<<"("<<t->dimensions[0]<<","<<t->dimensions[1]<<")"<<endl;
     print_array<int>(t->indices[1][0], t->indices[0][0][0] + 1);
-    print_array<int>(t->indices[1][1], t->indices[1][0][t->indices[0][0][0]]);
-    print_array<float>(t->vals, t->indices[1][0][t->indices[0][0][0]]); 
+    //print_array<int>(t->indices[1][1], t->indices[1][0][t->indices[0][0][0]]);
+    //print_array<float>(t->vals, t->indices[1][0][t->indices[0][0][0]]); 
 }
 
 void print_eigen_csr(EigenCSR& C) {

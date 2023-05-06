@@ -1,6 +1,8 @@
 #include "../utils/dataloader.h"
 #include <math.h> 
 
+const int32_t INTMAX = 2147483647;
+
 typedef struct {
   int32_t crd[2];
   float val;
@@ -15,6 +17,8 @@ typedef struct {
   int32_t buffer_capacity;
   wspace* buffer;
 }HashTable;
+
+int refresh_times = 0;
 
 void print_hashTable(HashTable* table) {
   for (int i=0; i<table->table_size; i++) {
@@ -48,6 +52,7 @@ int w_cmp_rev(const void *a, const void *b) {
 int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, HashTable* w) {
   wspace* accumulator = w->buffer;
   int accumulator_size = w->numel;
+  //std::cout << "Acc size: " << accumulator_size << ", COO size: " << COO_size << std::endl;
   if (COO_size == 0) {
     for (int i=0; i<accumulator_size; i++) {
       COO1_crd[i] = accumulator[i].crd[0];
@@ -65,7 +70,6 @@ int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t CO
   int content_pointer = 0;
   int target_pointer = 0;
   wspace tmp_con;
-  std::cout << "Acc size: " << accumulator_size << ", COO size: " << COO_size << std::endl;
   while(accumulator_pointer < accumulator_size && content_pointer < COO_size) {
     tmp_con.crd[0] = COO1_crd[content_pointer];
     tmp_con.crd[1] = COO2_crd[content_pointer];
@@ -122,10 +126,11 @@ int Sort(void* array, size_t size, bool rev) {
   }
   return size;
 }
-const int HASH_SCAL = 1;
+
+
 // Hash function transforms a crd to a hash key
-int hash_func(const int crd, const int tsize) {
-    return (crd * HASH_SCAL) % tsize;
+int32_t hash_func(const int32_t crd, const int32_t tsize) {
+    return crd < 0 ? ((INTMAX+crd) % tsize) : (crd % tsize);
 }
 
 void copy_buffer(HashTable* accumulator) {
@@ -141,7 +146,13 @@ void copy_buffer(HashTable* accumulator) {
 }
 
 int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, float val, int32_t dimension) {
-  int hashkey = hash_func(crds[0] * dimension + crds[1], accumulator->table_size);
+  if (accumulator->numel == accumulator->buffer_capacity) {
+    copy_buffer(accumulator);
+    *insertFail = true;
+    return Sort(accumulator->buffer, accumulator->buffer_capacity, false);
+  }
+  int32_t hashkey = hash_func(crds[0] * dimension + crds[1], accumulator->table_size);
+  //std::cout << "Hashkey: " << hashkey << std::endl;
   wspace tmp;
   tmp.crd[0] = crds[0];
   tmp.crd[1] = crds[1];
@@ -159,11 +170,6 @@ int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, 
       return accumulator->numel;
     }
   }
-  if (accumulator->numel == accumulator->buffer_capacity) {
-    copy_buffer(accumulator);
-    *insertFail = true;
-    return Sort(accumulator->buffer, accumulator->buffer_capacity, false);
-  }
   if (capacity == 0) {
     values[hashkey] = (wspace*)malloc(sizeof(wspace) * 2);
     values_capacity[hashkey] = 2;
@@ -176,6 +182,7 @@ int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, 
   values[hashkey][size] = tmp;
   values_size[hashkey] ++;
   accumulator->numel ++;
+  //std::cout << "inserted " << accumulator->numel << std::endl;
   return accumulator->numel;
 }
 
@@ -190,7 +197,15 @@ void init_hashTable(HashTable* w, int32_t w_accumulator_capacity) {
 }
 
 void refresh_wspace(HashTable* w) {
+  // Save the size and capacity of each bucket
+  // std::string filename1 = "/home/nfs_data/zhanggh/SparseWS/sizes" + std::to_string(refresh_times) + ".txt";
+  // std::string filename2 = "/home/nfs_data/zhanggh/SparseWS/capacity" + std::to_string(refresh_times) + ".txt";
+  // std::ofstream outfile1(filename1, std::ios_base::out);
+  // std::ofstream outfile2(filename2, std::ios_base::out);
+
   for(int i = 0; i < w->table_size; i++){
+    // outfile1 << w->values_size[i] << " ";
+    // outfile2 << w->values_capacity[i] << " ";
     if (w->values_capacity[i] != 0) {
       free(w->values[i]);
       w->values_capacity[i] = 0;
@@ -206,6 +221,9 @@ void refresh_wspace(HashTable* w) {
     w->buffer_capacity *= 1.5;
   }
   w->buffer = (wspace*)malloc(sizeof(wspace) * w->buffer_capacity);
+  refresh_times ++;
+  // outfile1.close();
+  // outfile2.close();
 }
 
 int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
@@ -227,11 +245,6 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
   for (int32_t pC2 = 1; pC2 < (C1_dimension + 1); pC2++) {
     C2_pos[pC2] = 0;
   }
-  int32_t C2_crd_size = 1048576;
-  C2_crd = (int32_t*)malloc(sizeof(int32_t) * C2_crd_size);
-  int32_t iC = 0;
-  int32_t C_capacity = 1048576;
-  C_vals = (float*)malloc(sizeof(float) * C_capacity);
 
   HashTable w_accumulator;
   init_hashTable(&w_accumulator, w_accumulator_capacity);
@@ -258,7 +271,9 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
       for (int32_t kB = B2_pos[j]; kB < B2_pos[(j + 1)]; kB++) {
         int32_t k = B2_crd[kB];
         w_point[0] = k;
+        //std::cout << "TryInsert: " << w_point[0] << " , " << w_point[1] << std::endl;
         TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+        
         // print_array(w1_crd, w_all_size);
         // print_array(w2_crd, w_all_size);
         // print_array(w_vals, w_all_size);
@@ -330,7 +345,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
 }
 
 double CSC_CSR_T_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t bench, bool print = false) {
-  //std::cout << "Capacity: " << w_cap << std::endl;
+  // std::cout << "Capacity: " << w_cap << std::endl;
   for (int i = 0; i < warmup; i++) {
     compute(C,A,B,w_cap);
   }
