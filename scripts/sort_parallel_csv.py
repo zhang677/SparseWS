@@ -1,8 +1,8 @@
 import pandas as pd
 
 filename = "/home/nfs_data/zhanggh/SparseWS/data/sampled_matrix_names_sorted.txt"
-table_name = "/home/nfs_data/zhanggh/SparseWS/data/results/test-coord-chase-flex.csv"
-new_table_name = "/home/nfs_data/zhanggh/SparseWS/data/results/test-coord-chase-flex-sorted.csv"
+table_name = "/home/nfs_data/zhanggh/SparseWS/data/sampled_output_info.csv"
+new_table_name = "/home/nfs_data/zhanggh/SparseWS/data/sampled_output_info-sorted.csv"
 names = open(filename, "r").read().split("\n")
 ori_table = pd.read_csv(table_name, header=None)
 # Sort ori_table by names

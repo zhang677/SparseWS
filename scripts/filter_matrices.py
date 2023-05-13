@@ -67,6 +67,35 @@ def matrix_collection():
       print(",".join([mtxnames[i],str(rows),str(cols),str(entries),str(calc_sparsity(sym, rows, cols, entries))]), file = out_file)   
   out_file.close()
 
+def find_largest_matrix():
+  parser = argparse.ArgumentParser(description='Filter out matrix coordiante real/integer general/symmetric')
+  parser.add_argument('--input_path', default="/home/eva_share/datasets/sparse_mat", type=str, help='Read path')
+  args = parser.parse_args()
+
+  in_dirname = args.input_path
+  mtxnames = [fname for fname in os.listdir(in_dirname)]
+  mtx_files = [os.path.join(in_dirname, fname, fname + ".mtx") for fname in mtxnames]  
+  max_nnz = 0
+  max_file = ""
+  for mtx in mtx_files:
+    _, _, entries, form, field, sym = mminfo(mtx)
+    if form == "coordinate" and (field == "real" or field == "integer") and (sym == "general" or sym == "symmetric"):
+      if entries > max_nnz:
+        max_nnz = entries
+        max_file = mtx
+  print(max_file, max_nnz)
+
+def print_matrix_info():
+  parser = argparse.ArgumentParser(description='Filter out matrix coordiante real/integer general/symmetric')
+  parser.add_argument('--input_path', default="/home/eva_share/datasets/sparse_mat/Freescale2/Freescale2.mtx", type=str, help='Read path')
+  args = parser.parse_args()
+
+  filename = args.input_path
+  rows, cols, entries, form, field, sym = mminfo(filename)
+  print(rows, cols, entries, form, field, sym)
+
 if __name__ == '__main__':
   random.seed(0)
-  ablation_bin_split()
+  # ablation_bin_split()
+  # find_largest_matrix()
+  print_matrix_info()

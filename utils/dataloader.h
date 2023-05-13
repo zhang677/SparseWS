@@ -14,6 +14,7 @@
 #include <tuple>
 #include <typeinfo>
 #include <vector>
+#include <chrono>
 using namespace std;
 typedef int Index;
 typedef float DType;
@@ -517,5 +518,19 @@ void check_csc_taco_eigen(taco_tensor_t& C, EigenCSC& C_true){
   compare_array<int>(C.indices[1][1], C_true.innerIndexPtr(), nnz);
   compare_array<float>(C.vals, C_true.valuePtr(), nnz);
 }
+
+
+class Timer {
+public:
+    Timer() : beg_(clock_::now()) {}
+    void reset() { beg_ = clock_::now(); }
+    double elapsed() const {
+        return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count(); }
+private:
+    typedef std::chrono::high_resolution_clock clock_;
+    typedef std::chrono::duration<double, std::ratio<1> > second_;
+    std::chrono::time_point<clock_> beg_;
+};
 
 #endif

@@ -1,5 +1,5 @@
 name=$1
 matrix_root=/home/eva_share/datasets/sparse_mat
 trans_root=/home/eva_share/datasets/sparse_mat_t
-output=/home/nfs_data/zhanggh/SparseWS/data/results/test-coord-chase.csv
-/home/nfs_data/zhanggh/SparseWS/test-coord $matrix_root/$name/$name.mtx $trans_root/$name-st.mtx 10 0 0 $output
+output=/home/nfs_data/zhanggh/SparseWS/data/sampled_output_info.csv
+/home/nfs_data/zhanggh/SparseWS/test-hash $matrix_root/$name/$name.mtx $trans_root/$name-st.mtx 10 0 0 $output
