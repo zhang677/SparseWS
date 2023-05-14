@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 import os
+from tqdm import tqdm
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Generate sparse matrix in mtx format')
@@ -19,13 +20,15 @@ if __name__ == '__main__':
   cur = 0
   col_candidates = list(range(config.row))
   rng = np.random.default_rng(config.seed)
-  for i in range(config.row):
+
+  for i in tqdm(range(config.row - 1)):
     col_ids = rng.choice(col_candidates, size = avg, replace=False)
     for j in col_ids:
-      print(f"{i+1} {j+1} 2.0", file = file)
+      print(f"{i+1} {j+1} 2", file = file)
       cur += 1
+
   col_ids = rng.choice(col_candidates, size = config.nnz - cur, replace=False)
   for j in col_ids:
-    print(f"{config.row} {j+1} 2.0", file = file)
+    print(f"{config.row} {j+1} 2", file = file)
   file.close()
 
