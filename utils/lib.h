@@ -24,6 +24,9 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext.hpp>
 #include <boost/range/irange.hpp>
+#include <sys/types.h>
+#include <unistd.h>
+#include <thread>
 
 #define TACO_MIN(_a,_b) ((_a) < (_b) ? (_a) : (_b))
 #define TACO_MAX(_a,_b) ((_a) > (_b) ? (_a) : (_b))
@@ -86,6 +89,16 @@ void deinit_taco_tensor_t(taco_tensor_t* t) {
   free(t->mode_types);
   free(t);
 }
+
+void delete_taco_tensor_DC(taco_tensor_t* t) {
+  free(t->indices[0][0]);
+  free(t->indices[1][0]);
+  free(t->indices[1][1]);
+  free(t->indices);
+  free(t->dimensions);
+  free(t->mode_ordering);
+}
+
 int cmp(const void *a, const void *b) {
   return *((const int*)a) - *((const int*)b);
 }

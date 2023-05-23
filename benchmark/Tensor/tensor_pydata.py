@@ -1,8 +1,9 @@
 import sparse
 import numpy as np
 import os
+import argparse
 
-def read_tns_file(filename):
+def read_tns_file(filename, tensor_name="", info=False):
   """
   Read a sparse tensor from a file in the .tns format.
   """
@@ -11,7 +12,6 @@ def read_tns_file(filename):
     lines = f.readlines()
     nnz = len(lines)
     # Read nonzeros
-    data = []
     indices = []
     values = []
     for i in range(nnz):
@@ -24,7 +24,10 @@ def read_tns_file(filename):
     dims = np.max(indices, axis=0) + 1
     print("dims: ", dims)
     print("nnz: ", nnz)
-    return sparse.COO(indices.T, values, shape=dims)
+    if info:
+      return tensor_name + "," + ",".join([str(x) for x in dims])+","+str(nnz)
+    else:
+      return sparse.COO(indices.T, values, shape=dims)
   
 def generate_random_tensor(dims, nnz):
   """
@@ -78,9 +81,32 @@ def test_tensor_generation():
   C = generate_random_tensor(cdims, cnnz)
   write_tns_file(C, os.path.join(root, "5-5-5.tns"))
 
+def test_all_tensor_info():
+  root = "/home/eva_share/datasets/datasets_zhr_nfs/datasets/sparse_ten"
+  entry_name_file = "/home/nfs_data/zhanggh/SparseWS/data/tensor_names.txt"
+  names = open(entry_name_file, "r").read().split("\n")
+  output_file = "/home/nfs_data/zhanggh/SparseWS/data/tensor_info.csv"
+  output = open(output_file, "w")
+  for name in names:
+    filename = os.path.join(root, name, name + ".tns")
+    print(read_tns_file(filename, info=True), file=output)
+
+def test_single_tensor_info(name, output):
+  root = "/home/eva_share/datasets/datasets_zhr_nfs/datasets/sparse_ten"
+  filename = os.path.join(root, name, name + ".tns")
+  print(name)
+  print(read_tns_file(filename, name, info=True), file=output)
+
 if __name__ == "__main__":
   #test_random_ttm_t()
-  filename = "/home/nfs_data/zhanggh/SparseWS/data/origin/5-5-5-10.tns"
-  tensor = read_tns_file(filename)
-  print(tensor.coords)
-  print(tensor.data)
+  #filename = "/home/nfs_data/zhanggh/SparseWS/data/origin/5-5-5-10.tns"
+  #filename = "/home/eva_share/datasets/datasets_zhr_nfs/datasets/sparse_ten/nell-2/nell-2.tns"
+  #tensor = read_tns_file(filename)
+  #print(tensor.coords)
+  #print(tensor.data)
+  parser = argparse.ArgumentParser(description='Test eigen and coord')
+  parser.add_argument("--name", type=str, default="nell-2")
+  args = parser.parse_args()
+  f = open("/home/nfs_data/zhanggh/SparseWS/data/tensor_info.csv", "a")
+  test_single_tensor_info(args.name, f)
+  f.close()

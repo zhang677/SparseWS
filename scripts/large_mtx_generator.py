@@ -6,12 +6,13 @@ from tqdm import tqdm
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Generate sparse matrix in mtx format')
   parser.add_argument('--row', default=5, type=int, help='# of rows')
+  parser.add_argument('--col', default=5, type=int, help='# of cols')
   parser.add_argument('--nnz', default=5, type=int, help='# of non-zeros')
   parser.add_argument('--seed', default=42, type=int, help='Random seed')
   parser.add_argument('--path', default="/home/eva_share/user_file/zhanggh/SpWS/data", type=str, help='Store path')
 
   config = parser.parse_args()
-  name = f"{config.row}-{config.nnz}-{config.seed}.mtx"
+  name = f"{config.row}-{config.col}-{config.nnz}-{config.seed}.mtx"
   file = open(os.path.join(config.path, name), 'w')
   print("%%MatrixMarket matrix coordinate real general", file = file)
   print("%", file = file)
