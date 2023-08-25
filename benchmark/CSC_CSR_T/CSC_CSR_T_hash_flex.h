@@ -19,6 +19,8 @@ typedef struct {
   wspace* buffer;
 }HashTable;
 
+int refresh_times = 0;
+
 void print_hashTable(HashTable* table) {
   for (int i=0; i<table->table_size; i++) {
     std::cout<<"indices["<<i<<"] = "<<table->values_size[i]<<", values["<<i<<"] = ";
@@ -196,14 +198,14 @@ void init_hashTable(HashTable* w, int32_t w_accumulator_capacity) {
 
 void refresh_wspace(HashTable* w) {
   // Save the size and capacity of each bucket
-  // std::string filename1 = "/home/nfs_data/zhanggh/SparseWS/sizes" + std::to_string(refresh_times) + ".txt";
-  // std::string filename2 = "/home/nfs_data/zhanggh/SparseWS/capacity" + std::to_string(refresh_times) + ".txt";
-  // std::ofstream outfile1(filename1, std::ios_base::out);
-  // std::ofstream outfile2(filename2, std::ios_base::out);
+  std::string filename1 = "/home/nfs_data/zhanggh/SparseWS/data/sizes" + std::to_string(refresh_times) + ".txt";
+  std::string filename2 = "/home/nfs_data/zhanggh/SparseWS/data/capacity" + std::to_string(refresh_times) + ".txt";
+  std::ofstream outfile1(filename1, std::ios_base::out);
+  std::ofstream outfile2(filename2, std::ios_base::out);
 
   for(int i = 0; i < w->table_size; i++){
-    // outfile1 << w->values_size[i] << " ";
-    // outfile2 << w->values_capacity[i] << " ";
+    outfile1 << w->values_size[i] << " ";
+    outfile2 << w->values_capacity[i] << " ";
     if (w->values_capacity[i] != 0) {
       free(w->values[i]);
       w->values_capacity[i] = 0;
@@ -222,8 +224,9 @@ void refresh_wspace(HashTable* w) {
     w->buffer_capacity = 1 << 30;
   }
   w->buffer = (wspace*)malloc(sizeof(wspace) * w->buffer_capacity);
-  // outfile1.close();
-  // outfile2.close();
+  refresh_times ++;
+  outfile1.close();
+  outfile2.close();
 }
 
 int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
@@ -403,6 +406,7 @@ double CSC_CSR_T_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int3
   // std::cout << "Capacity: " << w_cap << std::endl;
   for (int i = 0; i < warmup; i++) {
     compute(C,A,B,w_cap);
+    refresh_times = 0;
     if (bench) {
       free(C->vals);
       free(C->indices[1][0]);
@@ -412,6 +416,7 @@ double CSC_CSR_T_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int3
   double start = clock();
   for (int i = 0; i < repeat; i++) {
     compute(C,A,B,w_cap);
+    refresh_times = 0;
     if (bench && i != repeat - 1) {
       free(C->vals);
       free(C->indices[1][0]);
@@ -419,7 +424,7 @@ double CSC_CSR_T_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int3
     }
   }
   double end = clock();
-  double duration = (double)(end - start) / (CLOCKS_PER_SEC * bench);
+  double duration = (double)(end - start) / (CLOCKS_PER_SEC * repeat);
   if (print) {
     print_taco_tensor_DC(A);
     print_taco_tensor_DC(B);

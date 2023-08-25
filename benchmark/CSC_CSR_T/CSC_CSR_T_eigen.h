@@ -1,18 +1,26 @@
 #include "../../utils/dataloader.h"
 #include "../../utils/lib.h"
 
-double CSC_CSR_T_Eigen(EigenCSC& A, EigenCSR& B, EigenCSR& C, int32_t warmup, int32_t bench, bool print = false) {
+double CSC_CSR_T_Eigen(EigenCSC& A, EigenCSR& B, EigenCSR& C, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
   for (int i = 0; i < warmup; i++) {
     C = (A * B).transpose();
+    if (bench) {
+      EigenCSR tmp;
+      C = tmp;
+    }
   }
   //auto start = std::chrono::high_resolution_clock::now();
   double start = clock();
-  for (int i = 0; i < bench; i++) {
+  for (int i = 0; i < repeat; i++) {
     C = (A * B).transpose();
+    if (bench) {
+      EigenCSR tmp;
+      C = tmp;
+    }
   }
   //auto end = std::chrono::high_resolution_clock::now();
   double end = clock();
-  double duration = (double)(end - start) / (CLOCKS_PER_SEC * bench);
+  double duration = (double)(end - start) / (CLOCKS_PER_SEC * repeat);
   if (print) {
     print_eigen_csc(A);
     print_eigen_csr(B);
