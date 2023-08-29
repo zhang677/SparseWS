@@ -54,6 +54,80 @@ int32_t Merge_map_bucket(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, 
     return pCOO;
 }
 
+int32_t Merge_map_bucket_parallel(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t elements_num, int32_t bucket_size, map_bucket_t* accumulator, bool* accumulator_init) {
+    int32_t bucket_ids[PThreads];
+    int32_t COO_ids[PThreads];
+    // (accumulator[bucket_ids[i]], accumulator[bucket_ids[i+1]]) containes Total element/PThreads elements
+    int32_t elements_accum = 0;
+    int32_t barrier_id = 0;
+    bucket_ids[0] = barrier_id;
+    COO_ids[0] = 0;
+    // Workload balance. Can't handle very imbalanced workload, for example, 1, 1, 1, 1000000
+    for (int i = 0; i < bucket_size; i++) {
+        if (accumulator_init[i]) {
+            elements_accum += accumulator[i].size();
+            if (elements_accum >= (barrier_id + 1) * (elements_num / PThreads)) {
+                barrier_id++;
+                bucket_ids[barrier_id] = i;
+                COO_ids[barrier_id] = elements_accum - accumulator[i].size();
+            }
+            if (barrier_id == PThreads - 1) {
+                break;
+            }
+        }
+    }
+    // Each thread copy elements from [bucket_ids[i], bucket_ids[i+1]) to COO
+    // #pragma omp parallel for schedule(runtime)
+    // for (int32_t i = 0; i < PThreads; i++) {
+    //     int32_t pCOO = COO_ids[i];
+    //     int32_t iterend;
+    //     if (i == PThreads - 1) {
+    //         iterend = bucket_size;
+    //     } else {
+    //         iterend = bucket_ids[i + 1];
+    //     }
+    //     for (int32_t bucket_id = bucket_ids[i]; bucket_id < iterend; ++bucket_id) {
+    //         if (accumulator_init[bucket_id]) {
+    //             for (auto it = accumulator[bucket_id].begin(); it != accumulator[bucket_id].end(); ++it) {
+    //                 COO1_crd[pCOO] = bucket_id;
+    //                 COO2_crd[pCOO] = it->first.crd[0];
+    //                 COO_vals[pCOO] = it->second;
+    //                 pCOO++;
+    //             }
+    //             accumulator[bucket_id].clear();
+    //         }
+    //     }
+    // }
+
+    // We have PThreads in total. Each thread copy elements from [bucket_ids[i], bucket_ids[i+1]) to COO
+    // #pragma omp parallel num_threads(PThreads) 
+    #pragma omp parallel for schedule(runtime)
+    {
+        int i = omp_get_thread_num();
+        int32_t pCOO = COO_ids[i];
+        int32_t iterend;
+        if (i == PThreads - 1) {
+            iterend = bucket_size;
+        } else {
+            iterend = bucket_ids[i + 1];
+        }
+        #pragma unroll
+        for (int32_t bucket_id = bucket_ids[i]; bucket_id < iterend; ++bucket_id) {
+            if (accumulator_init[bucket_id]) {
+                for (auto it = accumulator[bucket_id].begin(); it != accumulator[bucket_id].end(); ++it) {
+                    COO1_crd[pCOO] = bucket_id;
+                    COO2_crd[pCOO] = it->first.crd[0];
+                    COO_vals[pCOO] = it->second;
+                    pCOO++;
+                }
+                accumulator[bucket_id].clear();
+            }
+        }
+    }
+
+    return elements_num;
+}
+
 int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
     int C1_dimension = (int)(C->dimensions[0]);
     int* restrict C2_pos = (int*)(C->indices[1][0]);
@@ -104,7 +178,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
     w1_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_size);
     w2_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_size);
     w_vals = (float*)malloc(sizeof(float) * w_all_size);
-    w_all_size = Merge_map_bucket(w1_crd, w2_crd, w_vals, bucket_size, w_accumulator, w_accumulator_init);
+    w_all_size = Merge_map_bucket_parallel(w1_crd, w2_crd, w_vals, w_all_size, bucket_size, w_accumulator, w_accumulator_init);
 
     w1_pos[0] = 0;
     w1_pos[1] = w_all_size;

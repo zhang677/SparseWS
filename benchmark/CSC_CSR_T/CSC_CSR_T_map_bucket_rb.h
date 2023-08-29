@@ -17,9 +17,13 @@ struct index_t {
     }
 };
 
+inline int32_t min(int32_t a, int32_t b) {
+    return (a < b) ? a : b;
+}
+
 typedef std::map<index_t, float> map_bucket_t;
 
-int32_t TryInsert_map_bucket(bool& insertFail, int32_t map_size, map_bucket_t* accumulator, bool* accumulator_init, int32_t bucket_id, index_t& point, float val) {
+int32_t TryInsert_map_bucket(bool& insertFail, int32_t map_size, map_bucket_t* accumulator, bool* accumulator_init, int32_t bucket_id, index_t& point, float val, int32_t* COO_ids, int32_t bucket_seg, int32_t bucket_size) {
     if (!accumulator_init[bucket_id]) {
         accumulator[bucket_id] = map_bucket_t();
         accumulator_init[bucket_id] = true;
@@ -29,29 +33,57 @@ int32_t TryInsert_map_bucket(bool& insertFail, int32_t map_size, map_bucket_t* a
         handle.first->second += val;
     } else {
         map_size++;
+        COO_ids[min(bucket_id / bucket_seg, bucket_size - 1) + 1] ++;
     }
     insertFail = false; // Always success
     return map_size;
 }
 
-int32_t Merge_map_bucket(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t bucket_size, map_bucket_t* accumulator, bool* accumulator_init) {
-    int32_t pCOO = 0;
-    float nz_row = 0;
-    #pragma unroll
-    for (int32_t bucket_id = 0; bucket_id < bucket_size; ++bucket_id) {
-        if (accumulator_init[bucket_id]) {
-            for (auto it = accumulator[bucket_id].begin(); it != accumulator[bucket_id].end(); ++it) {
-                COO1_crd[pCOO] = bucket_id;
-                COO2_crd[pCOO] = it->first.crd[0];
-                COO_vals[pCOO] = it->second;
-                pCOO++;
+int32_t Merge_map_bucket_parallel(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, map_bucket_t* accumulator, bool* accumulator_init, int32_t* COO_ids, int32_t bucket_seg, int32_t bucket_size) {
+    // prefix sum of COO_ids
+    int32_t elements_num = 0;
+    for (int32_t i = 1; i < (bucket_size + 1); i++) {
+        elements_num += COO_ids[i];
+        COO_ids[i] = elements_num;
+    }
+    #pragma omp parallel for schedule(runtime)
+    {
+        int32_t thread_id = omp_get_thread_num();
+        int32_t iterend = (thread_id == PThreads - 1) ? bucket_size : (thread_id + 1) * bucket_seg;
+        int32_t * COO1_crd_thread = COO1_crd + COO_ids[thread_id];
+        int32_t * COO2_crd_thread = COO2_crd + COO_ids[thread_id];
+        float * COO_vals_thread = COO_vals + COO_ids[thread_id];
+        int32_t COO_id = COO_ids[thread_id];
+        for (int32_t bucket_id = thread_id * bucket_seg; bucket_id < iterend; bucket_id++) {
+            if (accumulator_init[bucket_id]) {
+                for (auto it = accumulator[bucket_id].begin(); it != accumulator[bucket_id].end(); ++it) {
+                    COO1_crd[COO_id] = bucket_id;
+                    COO2_crd[COO_id] = it->first.crd[0];
+                    COO_vals[COO_id] = it->second;
+                    COO_id++;
+                }
             }
-            nz_row ++;
-            accumulator[bucket_id].clear();
         }
     }
-    // std::cout << "NZ Row: " << nz_row << "/" << bucket_size << " : " << nz_row / bucket_size << std::endl; // Mostly 1
-    return pCOO;
+    // for (int thread_id = 0; thread_id < PThreads; thread_id++) {
+    //     int32_t iterend = (thread_id == PThreads - 1) ? bucket_size : (thread_id + 1) * bucket_seg;
+    //     int32_t * COO1_crd_thread = COO1_crd + COO_ids[thread_id];
+    //     int32_t * COO2_crd_thread = COO2_crd + COO_ids[thread_id];
+    //     float * COO_vals_thread = COO_vals + COO_ids[thread_id];
+    //     int32_t COO_id = COO_ids[thread_id];
+    //     for (int32_t bucket_id = thread_id * bucket_seg; bucket_id < iterend; bucket_id++) {
+    //         if (accumulator_init[bucket_id]) {
+    //             for (auto it = accumulator[bucket_id].begin(); it != accumulator[bucket_id].end(); ++it) {
+    //                 COO1_crd[COO_id] = bucket_id;
+    //                 COO2_crd[COO_id] = it->first.crd[0];
+    //                 COO_vals[COO_id] = it->second;
+    //                 COO_id++;
+    //             }
+    //         }
+    //     }
+    // }
+
+    return elements_num;
 }
 
 int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
@@ -83,11 +115,14 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
     int32_t bucket_size = C1_dimension;
     int32_t bucket_id = 0;
     int32_t w_all_size = 0;
+    int32_t bucket_seg = bucket_size / PThreads;
 
     map_bucket_t* w_accumulator = 0;
     w_accumulator = new map_bucket_t[bucket_size];
     bool* w_accumulator_init = 0;
     w_accumulator_init = (bool*)calloc(bucket_size, sizeof(bool));
+    int32_t* w_accumulator_index = 0;
+    w_accumulator_index = (int32_t*)calloc((bucket_size + 1), sizeof(int32_t));
 
     for (int32_t j = 0; j < B1_dimension; j++) {
         for (int32_t iA = A2_pos[j]; iA < A2_pos[(j + 1)]; iA++) {
@@ -96,7 +131,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
             for (int32_t kB = B2_pos[j]; kB < B2_pos[(j + 1)]; kB++) {
                 int32_t k = B2_crd[kB];
                 bucket_id = k;
-                w_all_size = TryInsert_map_bucket(w_insertFail, w_all_size, w_accumulator, w_accumulator_init, bucket_id, w_point, A_vals[iA] * B_vals[kB]);
+                w_all_size = TryInsert_map_bucket(w_insertFail, w_all_size, w_accumulator, w_accumulator_init, bucket_id, w_point, A_vals[iA] * B_vals[kB], w_accumulator_index, bucket_seg, bucket_size);
             }
         }
     }
@@ -104,7 +139,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
     w1_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_size);
     w2_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_size);
     w_vals = (float*)malloc(sizeof(float) * w_all_size);
-    w_all_size = Merge_map_bucket(w1_crd, w2_crd, w_vals, bucket_size, w_accumulator, w_accumulator_init);
+    Merge_map_bucket_parallel(w1_crd, w2_crd, w_vals, w_accumulator, w_accumulator_init, w_accumulator_index, bucket_seg, bucket_size);
 
     w1_pos[0] = 0;
     w1_pos[1] = w_all_size;
@@ -115,12 +150,13 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B){
         int32_t k = w1_crd[kw];
         int32_t w1_segend = kw + 1;
         while (w1_segend < pw1_end && w1_crd[w1_segend] == k) {
-        w1_segend++;
+            w1_segend++;
         }
         C2_pos[k + 1] = w1_segend - kw;
         kw = w1_segend;
     }
     delete[] w_accumulator;
+    free(w_accumulator_index);
     free(w_accumulator_init);
     free(w1_crd);
     free(w1_pos);

@@ -1,5 +1,6 @@
 #include "../../utils/dataloader.h"
 #include <math.h> 
+#include <thread>
 
 const int32_t INTMAX = 2147483647;
 
@@ -17,8 +18,6 @@ typedef struct {
   int32_t buffer_capacity;
   wspace* buffer;
 }HashTable;
-
-int refresh_times = 0;
 
 void print_hashTable(HashTable* table) {
   for (int i=0; i<table->table_size; i++) {
@@ -52,28 +51,28 @@ int w_cmp_rev(const void *a, const void *b) {
   }
   return (((wspace*)b)->crd[1] - ((wspace*)a)->crd[1]);
 }
-int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, HashTable* w) {
+void Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t* COO_size, HashTable* w) {
   wspace* accumulator = w->buffer;
   int accumulator_size = w->numel;
-  //std::cout << "Acc size: " << accumulator_size << ", COO size: " << COO_size << std::endl;
-  if (COO_size == 0) {
+  int all_array_size = COO_size[0];
+  if (all_array_size == 0) {
     for (int i=0; i<accumulator_size; i++) {
       COO1_crd[i] = accumulator[i].crd[0];
       COO2_crd[i] = accumulator[i].crd[1];
       COO_vals[i] = accumulator[i].val;
     }
-    return accumulator_size;
+    COO_size[0] = accumulator_size;
   }
   int32_t* tmp_COO_crd[2];
   float* tmp_COO_vals;
-  tmp_COO_crd[0] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
-  tmp_COO_crd[1] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
-  tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + COO_size));
+  tmp_COO_crd[0] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + all_array_size));
+  tmp_COO_crd[1] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + all_array_size));
+  tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + all_array_size));
   int accumulator_pointer = 0;
   int content_pointer = 0;
   int target_pointer = 0;
   wspace tmp_con;
-  while(accumulator_pointer < accumulator_size && content_pointer < COO_size) {
+  while(accumulator_pointer < accumulator_size && content_pointer < all_array_size) {
     tmp_con.crd[0] = COO1_crd[content_pointer];
     tmp_con.crd[1] = COO2_crd[content_pointer];
     if (w_cmp(&accumulator[accumulator_pointer], &tmp_con) == 0) {
@@ -104,7 +103,7 @@ int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t CO
     accumulator_pointer ++;
     target_pointer ++;
   }
-  while(content_pointer < COO_size) {
+  while(content_pointer < all_array_size) {
     tmp_COO_crd[0][target_pointer] = COO1_crd[content_pointer];
     tmp_COO_crd[1][target_pointer] = COO2_crd[content_pointer];
     tmp_COO_vals[target_pointer] = COO_vals[content_pointer];
@@ -119,7 +118,7 @@ int Merge_hash(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t CO
   free(tmp_COO_crd[0]);
   free(tmp_COO_crd[1]);
   free(tmp_COO_vals);
-  return target_pointer;
+  COO_size[0] = target_pointer;
 }
 int Sort(void* array, size_t size, bool rev) {
   if (rev) {
@@ -192,7 +191,7 @@ int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, 
 void init_hashTable(HashTable* w, int32_t w_accumulator_capacity) {
   w->numel = 0;
   w->table_size = w_accumulator_capacity;
-  w->buffer_capacity = w_accumulator_capacity * 2;
+  w->buffer_capacity = w_accumulator_capacity * 4;
   w->values = (wspace**)malloc(sizeof(wspace*) * w->table_size);
   w->values_size = (int32_t*)calloc(w->table_size, sizeof(int32_t));
   w->values_capacity = (int32_t*)calloc(w->table_size, sizeof(int32_t));
@@ -217,14 +216,13 @@ void refresh_wspace(HashTable* w) {
   }
   w->numel = 0;
   free(w->buffer);
-  // Simple heuristic to avoid frequent reallocation
-  if (w->buffer_capacity < 4194304) {
-    w->buffer_capacity *= 2;
-  } else {
-    w->buffer_capacity *= 1.5;
-  }
+  // Keep the time of pipeline stage consistent
+  // if (w->buffer_capacity < 4194304) {
+  //   w->buffer_capacity *= 2;
+  // } else {
+  //   w->buffer_capacity *= 1.5;
+  // }
   w->buffer = (wspace*)malloc(sizeof(wspace) * w->buffer_capacity);
-  refresh_times ++;
   // outfile1.close();
   // outfile2.close();
 }
@@ -249,10 +247,16 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
     C2_pos[pC2] = 0;
   }
 
-  HashTable w_accumulator;
-  init_hashTable(&w_accumulator, w_accumulator_capacity);
+  HashTable w_accumulator_0;
+  HashTable w_accumulator_1;
+  init_hashTable(&w_accumulator_0, w_accumulator_capacity);
+  init_hashTable(&w_accumulator_1, w_accumulator_capacity);
+  std::thread t;
+  int32_t acc_array_id = 0;
+
   int32_t w_all_capacity = w_accumulator_capacity;
-  int32_t w_all_size = 0;
+  int32_t w_all_size[1];
+  w_all_size[0] = 0;
   int32_t* restrict w1_pos = 0;
   w1_pos = (int32_t*)malloc(sizeof(int32_t) * 2);
   int32_t* restrict w1_crd = 0;
@@ -274,41 +278,78 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
       for (int32_t kB = B2_pos[j]; kB < B2_pos[(j + 1)]; kB++) {
         int32_t k = B2_crd[kB];
         w_point[0] = k;
-        //std::cout << "TryInsert: " << w_point[0] << " , " << w_point[1] << std::endl;
-        TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+        if (acc_array_id == 0) {
+          //std::cout << "TryInsert: " << w_point[0] << " , " << w_point[1] << std::endl;
+          TryInsert_hash(w_insertFail, &w_accumulator_0, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+        } else {
+          TryInsert_hash(w_insertFail, &w_accumulator_1, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+        }
         
         if (w_insertFail[0]) {
-          if (w_accumulator.numel + w_all_size > w_all_capacity) {
-            w_all_capacity = w_accumulator.numel + w_all_size;
-            w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-            w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-            w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+          if (t.joinable()) {
+            t.join();
           }
-          w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
-          // print_array(w1_crd, w_all_size);
-          // print_array(w2_crd, w_all_size);
-          // print_array(w_vals, w_all_size);
-          refresh_wspace(&w_accumulator);
-          TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+          if (acc_array_id == 0) {
+            // Array 0 is being inserted into, so we create a thread to merge array 0 and continue to insert into array 1.
+            if (w_accumulator_0.numel + w_all_size[0] > w_all_capacity) {
+              w_all_capacity = w_accumulator_0.numel + w_all_size[0];
+              w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+              w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+              w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+            }
+            t = std::thread(Merge_hash, w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator_0);
+            acc_array_id = 1;
+            refresh_wspace(&w_accumulator_1);
+            TryInsert_hash(w_insertFail, &w_accumulator_1, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+
+          } else {
+            if (w_accumulator_1.numel + w_all_size[0] > w_all_capacity) {
+              w_all_capacity = w_accumulator_1.numel + w_all_size[0];
+              w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+              w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+              w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+            }
+            t = std::thread(Merge_hash, w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator_1);
+            acc_array_id = 0;
+            refresh_wspace(&w_accumulator_0);
+            TryInsert_hash(w_insertFail, &w_accumulator_0, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+          }
         }
-        // print_hashTable(&w_accumulator);
       }
     }
   }
-  if (w_accumulator.numel > 0) {
-    copy_buffer(&w_accumulator);
-    Sort(w_accumulator.buffer, w_accumulator.numel, false);
-    if (w_accumulator.numel + w_all_size > w_all_capacity) {
-      w_all_capacity = w_accumulator.numel + w_all_size;
-      w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-      w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-      w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+  if (t.joinable()) {
+    t.join();
+  }
+  if (acc_array_id == 0) {
+    if (w_accumulator_0.numel > 0) {
+      copy_buffer(&w_accumulator_0);
+      Sort(w_accumulator_0.buffer, w_accumulator_0.numel, false);
+      if (w_accumulator_0.numel + w_all_size[0] > w_all_capacity) {
+        w_all_capacity = w_accumulator_0.numel + w_all_size[0];
+        w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+        w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+        w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+      }
+      Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator_0);
     }
-    w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
+  } 
+  else {
+    if (w_accumulator_1.numel > 0) {
+      copy_buffer(&w_accumulator_1);
+      Sort(w_accumulator_1.buffer, w_accumulator_1.numel, false);
+      if (w_accumulator_1.numel + w_all_size[0] > w_all_capacity) {
+        w_all_capacity = w_accumulator_1.numel + w_all_size[0];
+        w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+        w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+        w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+      }
+      Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator_1);
+    }
   }
 
   w1_pos[0] = 0;
-  w1_pos[1] = w_all_size;
+  w1_pos[1] = w_all_size[0];
   int32_t kw = w1_pos[0];
   int32_t pw1_end = w1_pos[1];
 
@@ -322,15 +363,24 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
     kw = w1_segend;
   }
 
-  for (int i = 0; i < w_accumulator.table_size; i++) {
-    if (w_accumulator.values_capacity[i] >0) {
-      free(w_accumulator.values[i]);
+  for (int i = 0; i < w_accumulator_0.table_size; i++) {
+    if (w_accumulator_0.values_capacity[i] >0) {
+      free(w_accumulator_0.values[i]);
     }
   }
-  free(w_accumulator.values_size);
-  free(w_accumulator.values_capacity);
-  free(w_accumulator.buffer);
-  free(w_accumulator.values);
+    for (int i = 0; i < w_accumulator_1.table_size; i++) {
+    if (w_accumulator_1.values_capacity[i] >0) {
+      free(w_accumulator_1.values[i]);
+    }
+  }
+  free(w_accumulator_0.values_size);
+  free(w_accumulator_0.values_capacity);
+  free(w_accumulator_0.buffer);
+  free(w_accumulator_0.values);
+  free(w_accumulator_1.values_size);
+  free(w_accumulator_1.values_capacity);
+  free(w_accumulator_1.buffer);
+  free(w_accumulator_1.values);
   free(w_insertFail);
   free(w_point);
   free(w1_crd);

@@ -370,8 +370,8 @@ taco_tensor_t get_csr_taco_tensor(int rows, int cols) {
 taco_tensor_t to_taco_tensor(const EigenCSR& matrix) {
   taco_tensor_t csrt = get_csr_taco_tensor(matrix.rows(), matrix.cols());
 
-  csrt.indices[0][0] = (int32_t*)matrix.outerIndexPtr();
-  csrt.indices[0][1] = (int32_t*)matrix.innerIndexPtr();
+  csrt.indices[1][0] = (int32_t*)matrix.outerIndexPtr();
+  csrt.indices[1][1] = (int32_t*)matrix.innerIndexPtr();
   csrt.vals = (float*)matrix.valuePtr();
   return csrt;
 }
