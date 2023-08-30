@@ -46,6 +46,7 @@ int32_t Merge_map_bucket_parallel(int32_t* COO1_crd, int32_t* COO2_crd, float* C
         elements_num += COO_ids[i];
         COO_ids[i] = elements_num;
     }
+    // We have PThreads in total. Each thread copies (bucket_size / PThreads) buckets to COO
     #pragma omp parallel for schedule(runtime)
     {
         int32_t thread_id = omp_get_thread_num();

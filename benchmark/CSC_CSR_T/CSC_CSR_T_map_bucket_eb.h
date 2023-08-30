@@ -76,7 +76,7 @@ int32_t Merge_map_bucket_parallel(int32_t* COO1_crd, int32_t* COO2_crd, float* C
             }
         }
     }
-    // Each thread copy elements from [bucket_ids[i], bucket_ids[i+1]) to COO
+    // Each thread copies elements from [bucket_ids[i], bucket_ids[i+1]) to COO
     // #pragma omp parallel for schedule(runtime)
     // for (int32_t i = 0; i < PThreads; i++) {
     //     int32_t pCOO = COO_ids[i];
@@ -99,7 +99,7 @@ int32_t Merge_map_bucket_parallel(int32_t* COO1_crd, int32_t* COO2_crd, float* C
     //     }
     // }
 
-    // We have PThreads in total. Each thread copy elements from [bucket_ids[i], bucket_ids[i+1]) to COO
+    // We have PThreads in total. Each thread copies elements from [bucket_ids[i], bucket_ids[i+1]) to COO
     // #pragma omp parallel num_threads(PThreads) 
     #pragma omp parallel for schedule(runtime)
     {

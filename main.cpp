@@ -23,7 +23,8 @@
 //#include "benchmark/CSC_CSR_T_hash.h"
 //#include "benchmark/CSC_CSR_T/CSC_CSR_T_hash_flex.h"
 //#include "benchmark/CSC_CSR_T/CSC_CSR_T_hash.h"
-#include "benchmark/CSC_CSR_T/CSC_CSR_T_hash_mt.h"
+//#include "benchmark/CSC_CSR_T/CSC_CSR_T_hash_mt.h"
+#include "benchmark/CSC_CSR_T/CSC_CSR_T_coord_bucket.h"
 //#include "benchmark/CSC_CSR_T/CSC_CSR_T_map.h"
 //#include "benchmark/CSC_CSR_T/CSC_CSR_T_map_bucket_rb.h"
 #include "benchmark/CSC_CSR_T/CSC_CSR_T_eigen.h"
@@ -227,6 +228,7 @@ void check_eigen_hash_outer(const string filename1, const string filename2, cons
 
     std::cout << "Hash" << std::endl;
     w_cap = pow(2,int(log2(nnz))); // heuristic
+    //w_cap = 3;
     CSC_CSR_T_hash(&A, &B, &C, w_cap, 0, 1, false, verbose);
     std::cout << "Eigen" << std::endl;
     CSC_CSR_T_Eigen(A_true, B_true, C_true, 0, 1, false, verbose);
@@ -528,7 +530,7 @@ void benchmark_eigen_hash_outer(const string filename1, const string filename2, 
 
     clock_t start, finish;
     double duration_eigen, duration_taco;
-    const int warmup = 0;
+    const int warmup = 5;
 
     vector<string> result;
     boost::split(result, filename1, boost::is_any_of("/"));
