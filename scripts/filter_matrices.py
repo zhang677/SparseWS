@@ -82,7 +82,7 @@ def ablation_bin_split_new():
     sampled_name[key] = random.sample(bin_name[key],args.sample_num)
   print(sampled_name)
   # Write the info of sampled matrices to a csv file.
-  filename = args.output_info + str(args.seed) + "_" + str(3 * args.sample_num) + ".csv"
+  filename = args.output_info + "_" + str(args.seed) + "_" + str(3 * args.sample_num) + ".csv"
   out_info = open(filename, 'w')
   print("name,rows,cols,entries,sparsity", file = out_info)
   for key in sampled_name.keys():
@@ -138,8 +138,8 @@ def print_matrix_info():
 
 def output_names_csv():
   parser = argparse.ArgumentParser(description='Output matrix names from csv to a txt file.')
-  parser.add_argument('--input_path', default="/home/zgh23/code/SparseWS/info/test_matrix_info42_30_sorted.csv", type=str, help='Read path')
-  parser.add_argument('--output_file', default="/home/zgh23/code/SparseWS/info/test_matrix_names42_30_sorted.txt", type=str, help='Store path')
+  parser.add_argument('--input_path', default="/home/zgh23/code/SparseWS/info/test_matrix_info_42_30_sorted.csv", type=str, help='Read path')
+  parser.add_argument('--output_file', default="/home/zgh23/code/SparseWS/info/test_matrix_names_42_30_sorted.txt", type=str, help='Store path')
   args = parser.parse_args()
 
   df = pd.read_csv(args.input_path)

@@ -1,0 +1,7 @@
+regular_10000_100_0.01
+regular_200_2_0.01
+regular_7000_70_0.01
+regular_5000_50_0.01
+regular_3000_30_0.01
+regular_1000_10_0.01
+regular_600_6_0.01

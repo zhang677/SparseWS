@@ -405,8 +405,8 @@ void init_taco_tensor_DC(taco_tensor_t* t, int nrow, int ncol, vector<int> mode_
 void print_taco_tensor_DC(taco_tensor_t* t) {
     cout<<"("<<t->dimensions[0]<<","<<t->dimensions[1]<<")"<<endl;
     print_array<int>(t->indices[1][0], t->indices[0][0][0] + 1);
-    //print_array<int>(t->indices[1][1], t->indices[1][0][t->indices[0][0][0]]);
-    //print_array<float>(t->vals, t->indices[1][0][t->indices[0][0][0]]); 
+    print_array<int>(t->indices[1][1], t->indices[1][0][t->indices[0][0][0]]);
+    print_array<float>(t->vals, t->indices[1][0][t->indices[0][0][0]]); 
 }
 
 void print_eigen_csr(EigenCSR& C) {
@@ -431,7 +431,22 @@ void print_csr(int nrow, int ncol, int* indptr_buffer, int* indices_buffer, floa
   print_array<float>(value_buffer, nnz);
 }
 
-void dense_to_compressed(vector<int>& hindptr, vector<int>& hindices, vector<int>& new_indptr, const vector<int>& indptr) {
+void dense_to_compressed(vector<int>& hindptr, vector<int>& hindices, vector<int>& new_indptr, int* indptr, int nnz) {
+    hindices.clear();
+    hindptr.clear();
+    new_indptr.clear();
+    new_indptr.push_back(0);
+    for(int i=0; i<nnz-1; i++){
+        if (indptr[i+1]!=indptr[i]) {
+            hindices.push_back(i);
+            new_indptr.push_back(indptr[i+1]);
+        }
+    }
+    hindptr.push_back(0);
+    hindptr.push_back(hindices.size());
+}
+
+void dense_to_compressed(vector<int>& hindptr, vector<int>& hindices, vector<int>& new_indptr, vector<int>& indptr) {
     hindices.clear();
     hindptr.clear();
     new_indptr.clear();
@@ -446,7 +461,42 @@ void dense_to_compressed(vector<int>& hindptr, vector<int>& hindices, vector<int
     hindptr.push_back(hindices.size());
 }
 
-taco_tensor_t CC_to_taco_tensor(vector<int>& old_indptr_buffer, vector<int>& indices_buffer, vector<float>& value_buffer,
+taco_tensor_t CC_to_taco_tensor(int* old_indptr_buffer, int* indices_buffer, float* value_buffer,
+int nrow, int ncol, int nnz, vector<int> mode_ordering) {
+    vector<int> hindptr;
+    vector<int> hindices;
+    vector<int> indptr_buffer;
+    
+    taco_tensor_t t;
+    t.order = 2;
+    t.mode_ordering = new int32_t[2];
+    t.mode_ordering[0] = mode_ordering[0];
+    t.mode_ordering[1] = mode_ordering[1];
+    t.dimensions = new int32_t[2];
+    t.dimensions[0] = nrow;
+    t.dimensions[1] = ncol;
+    dense_to_compressed(hindptr, hindices, indptr_buffer, old_indptr_buffer, t.dimensions[mode_ordering[0]] + 1);
+    t.indices = new int32_t**[2];
+    t.indices[0] = new int32_t*[2];
+    t.indices[1] = new int32_t*[2];
+    t.indices[0][0] = new int32_t[2];
+    t.indices[0][1] = new int32_t[hindices.size()];
+    t.indices[1][0] = new int32_t[hindices.size() + 1];
+    t.indices[1][1] = new int32_t[nnz];
+    t.vals = new float[nnz];
+    t.vals_size = nnz;
+
+    std::copy(hindptr.begin(), hindptr.end(), t.indices[0][0]);
+    std::copy(hindices.begin(), hindices.end(), t.indices[0][1]);
+    std::copy(indptr_buffer.begin(), indptr_buffer.end(), t.indices[1][0]);
+    //std::copy(indices_buffer.begin(), indices_buffer.end(), t.indices[1][1]);
+    memcpy(t.indices[1][1], indices_buffer, nnz*sizeof(int32_t));
+    //std::copy(value_buffer.begin(), value_buffer.end(), t.vals);
+    memcpy(t.vals, value_buffer, nnz*sizeof(float));
+    return t;    
+}
+
+taco_tensor_t CC_to_taco_tensor(std::vector<int> old_indptr_buffer, std::vector<int> indices_buffer, std::vector<float> value_buffer,
 int nrow, int ncol, int nnz, vector<int> mode_ordering) {
     vector<int> hindptr;
     vector<int> hindices;
@@ -495,7 +545,11 @@ void print_taco_tensor_CC(taco_tensor_t* t) {
     for (int i=0; i<t->vals_size; i++) {
       cout<<t->indices[1][1][i]<<",";
     }
-    cout<<"]"<<endl;        
+    cout<<"]"<<endl;
+    for (int i=0; i<t->vals_size; i++) {
+      cout<<t->vals[i]<<",";
+    }
+    cout<<"]"<<endl;           
 
 }
 

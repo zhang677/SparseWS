@@ -25,8 +25,8 @@ class ScipyMatrixMarketTensorStore:
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Shift and transpose sparse matrix in mtx format')
   parser.add_argument('--name', metavar='ssname', type=str, action='store', help='tensor name to run format conversion')
-  parser.add_argument('--input_path', default="/home/nfs_data/zhanggh/SparseWS/data", type=str, help='Store path')
-  parser.add_argument('--output_path', default="/home/nfs_data/zhanggh/SparseWS/data", type=str, help='Store path')
+  parser.add_argument('--input_path', default="/scratch/zgh23/sparse_mat", type=str, help='Store path')
+  parser.add_argument('--output_path', default="/scratch/zgh23/sparse_mat_t", type=str, help='Store path')
   parser.add_argument('--tiles', action='store_true')
   args = parser.parse_args()
 
@@ -58,11 +58,13 @@ if __name__ == '__main__':
       print(in_dirname)
       #mtxnames = [fname for fname in os.listdir(in_dirname) if fname.endswith(".mtx")]
       mtxnames = [fname for fname in os.listdir(in_dirname)]
+      exist_mtxnames = [fname.replace("-st.mtx", ".mtx") for fname in os.listdir(out_dirname)]
+      mtxnames = list(set(mtxnames) - set(exist_mtxnames))
       print(mtxnames)
-      #mtx_files = [os.path.join(in_dirname, fname) for fname in mtxnames]
-      mtx_files = [os.path.join(in_dirname, fname, fname + ".mtx") for fname in mtxnames]
-      #out_mtx_files = [os.path.join(out_dirname, fname.replace(".mtx", "-st.mtx")) for fname in mtxnames]
-      out_mtx_files = [os.path.join(out_dirname, fname + "-st.mtx") for fname in mtxnames]
+      mtx_files = [os.path.join(in_dirname, fname) for fname in mtxnames]
+      #mtx_files = [os.path.join(in_dirname, fname, fname + ".mtx") for fname in mtxnames]
+      out_mtx_files = [os.path.join(out_dirname, fname.replace(".mtx", "-st.mtx")) for fname in mtxnames]
+      #out_mtx_files = [os.path.join(out_dirname, fname + "-st.mtx") for fname in mtxnames]
       tensors = [SuiteSparseTensor(mtx_file) for mtx_file in mtx_files]
       for i, ten in tqdm(enumerate(tensors)):
            out_name = out_mtx_files[i]

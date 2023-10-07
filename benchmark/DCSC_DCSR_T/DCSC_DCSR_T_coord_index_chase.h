@@ -196,11 +196,13 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap)
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
   float* restrict C_vals = (float*)(C->vals);
+  int* restrict A1_pos = (int*)(A->indices[0][0]);
+  int* restrict A1_crd = (int*)(A->indices[0][1]);
   int* restrict A2_pos = (int*)(A->indices[1][0]);
   int* restrict A2_crd = (int*)(A->indices[1][1]);
   float* restrict A_vals = (float*)(A->vals);
-  int B1_dimension = (int)(B->dimensions[0]);
-  int B2_dimension = (int)(B->dimensions[1]);
+  int* restrict B1_pos = (int*)(B->indices[0][0]);
+  int* restrict B1_crd = (int*)(B->indices[0][1]);
   int* restrict B2_pos = (int*)(B->indices[1][0]);
   int* restrict B2_crd = (int*)(B->indices[1][1]);
   float* restrict B_vals = (float*)(B->vals);
@@ -223,30 +225,43 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap)
   bool w_insertFail = false; 
   int32_t w_point[w_order];
   int32_t w1_pos[w_order];
-  for (int32_t j = 0; j < B1_dimension; j++) {
-    for (int32_t iA = A2_pos[j]; iA < A2_pos[j+1]; iA++) {
-      int32_t i = A2_crd[iA];
-      for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
-        int32_t k = B2_crd[kB];
-        w_point[0] = k;
-        w_point[1] = i; // Transpose
 
-        w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[iA] * B_vals[kB]);
-        if (w_insertFail) {
-          if(w_accumulator_size + w_all_size > w_all_capacity) {
-            w_all_capacity = w_accumulator_size + w_all_size;
-            //std::cout << w_all_capacity << std::endl;
-            w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-            w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-            w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
-          }
-          w_all_size = Merge_coord_t(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_size);
-          w_accumulator_index[0] = 0;
-          w_accumulator_size = 0;
+  int32_t jA = A1_pos[0];
+  int32_t pA1_end = A1_pos[1];
+  int32_t jB = B1_pos[0];
+  int32_t pB1_end = B1_pos[1];
+
+  while (jA < pA1_end && jB < pB1_end) {
+    int32_t jA0 = A1_crd[jA];
+    int32_t jB0 = B1_crd[jB];
+    int32_t j = TACO_MIN(jA0, jB0);
+    if (jA0 == j && jB0 == j) {
+      for (int32_t iA = A2_pos[j]; iA < A2_pos[j+1]; iA++) {
+        int32_t i = A2_crd[iA];
+        for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
+          int32_t k = B2_crd[kB];
+          w_point[0] = k;
+          w_point[1] = i; // Transpose
+
           w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[iA] * B_vals[kB]);
+          if (w_insertFail) {
+            if(w_accumulator_size + w_all_size > w_all_capacity) {
+              w_all_capacity = w_accumulator_size + w_all_size;
+              //std::cout << w_all_capacity << std::endl;
+              w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+              w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+              w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+            }
+            w_all_size = Merge_coord_t(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_size);
+            w_accumulator_index[0] = 0;
+            w_accumulator_size = 0;
+            w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[iA] * B_vals[kB]);
+          }
         }
       }
     }
+    jA += (int32_t)(jA0 == j);
+    jB += (int32_t)(jB0 == j);    
   }
   if (w_accumulator_size > 0) {
     // Sort

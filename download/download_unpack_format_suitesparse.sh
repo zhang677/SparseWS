@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Command: export SUITESPARSE_PATH=/scratch/zgh23/sparse_mat i.e. <path_to_suitesparse>
 # Command: ./scripts/formatting/download_unpack_format_suitesparse.sh <tensor_names.txt>
 
 basedir=$(pwd)

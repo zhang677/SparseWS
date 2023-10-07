@@ -7,7 +7,7 @@ BOOST_INC = -I /home/zgh23/tools/boost_1_83_0
 WCAP = 0
 
 test: test.o Makefile
-	g++ -o test-coord -g ${EIGEN_INC} ${BOOST_INC} test.o -liomp5 -lpthread -lm -ldl -DCAP=${WCAP}
+	g++ -o test-hash-cc -g ${EIGEN_INC} ${BOOST_INC} test.o -liomp5 -lpthread -lm -ldl -DCAP=${WCAP}
 
 test.o: main.cpp ./utils/lib.h Makefile
 	g++ -o test.o -g -c -fpermissive -std=c++17 -pthread ${EIGEN_INC} ${BOOST_INC} -DCAP=${WCAP} main.cpp

@@ -2,10 +2,8 @@
 #include "../../utils/lib.h"
 
 #define w_order 2
-const int32_t INTMAX = 2147483647;
 
 int acc_capacity;
-
 struct wspace_t {
   int32_t* crd[w_order];
   float* val;
@@ -20,7 +18,7 @@ int esc_cmp_t(const void* a, const void* b) {
     if (w_accumulator.crd[i][l] == w_accumulator.crd[i][r]) continue;
     return w_accumulator.crd[i][l] - w_accumulator.crd[i][r];
   }
-  return w_accumulator.crd[1][l] - w_accumulator.crd[1][r];
+  return w_accumulator.crd[w_order - 1][l] - w_accumulator.crd[w_order - 1][r];
 }
 
 int esc_cmp_t_rev(const void* a, const void* b) {
@@ -30,7 +28,7 @@ int esc_cmp_t_rev(const void* a, const void* b) {
     if (w_accumulator.crd[i][r] == w_accumulator.crd[i][l]) continue;
     return w_accumulator.crd[i][r] - w_accumulator.crd[i][l];
   }
-  return w_accumulator.crd[1][r] - w_accumulator.crd[1][l];
+  return w_accumulator.crd[w_order - 1][r] - w_accumulator.crd[w_order - 1][l];
 }
 
 int Sort_t(size_t size, bool rev) {
@@ -78,29 +76,36 @@ int32_t TryInsert_coord_t(bool* insertFail, int32_t accumulator_size, int32_t* c
   }
 }
 
-int32_t Merge_coord_t(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int32_t COO_size, int32_t accumulator_size) {
+int32_t Merge_coord_t(int32_t* COO1_crd_0, int32_t* COO2_crd_0, float* COO_vals_0,int32_t* COO1_crd_1, int32_t* COO2_crd_1, float* COO_vals_1, int32_t COO_size, int32_t accumulator_size) {
+  int32_t* COO1_crd;
+  int32_t* COO2_crd;
+  float* COO_vals;
+  COO1_crd = COO1_crd_0;
+  COO2_crd = COO2_crd_0;
+  COO_vals = COO_vals_0;
+  int32_t* tmp_COO_crd[2];
+  float* tmp_COO_vals;
+  tmp_COO_crd[0] = COO1_crd_1;
+  tmp_COO_crd[1] = COO2_crd_1;
+  tmp_COO_vals = COO_vals_1;
+
   if (COO_size == 0) {
-    COO1_crd[0] = w_accumulator.crd[0][w_accumulator_index[0]];
-    COO2_crd[0] = w_accumulator.crd[1][w_accumulator_index[0]];
-    COO_vals[0] = w_accumulator.val[w_accumulator_index[0]];
+    tmp_COO_crd[0][0] = w_accumulator.crd[0][w_accumulator_index[0]];
+    tmp_COO_crd[1][0] = w_accumulator.crd[1][w_accumulator_index[0]];
+    tmp_COO_vals[0] = w_accumulator.val[w_accumulator_index[0]];
     int target_pointer = 0;
     for (int i = 1; i < accumulator_size; i++) {
       if (compare(w_accumulator_index[i], w_accumulator_index[target_pointer], COO1_crd, COO2_crd) == 0) {
-        COO_vals[target_pointer] += w_accumulator.val[w_accumulator_index[i]];
+        tmp_COO_vals[target_pointer] += w_accumulator.val[w_accumulator_index[i]];
       } else {
         target_pointer++;
-        COO1_crd[target_pointer] = w_accumulator.crd[0][w_accumulator_index[i]];
-        COO2_crd[target_pointer] = w_accumulator.crd[1][w_accumulator_index[i]];
-        COO_vals[target_pointer] = w_accumulator.val[w_accumulator_index[i]];
+        tmp_COO_crd[0][target_pointer] = w_accumulator.crd[0][w_accumulator_index[i]];
+        tmp_COO_crd[1][target_pointer] = w_accumulator.crd[1][w_accumulator_index[i]];
+        tmp_COO_vals[target_pointer] = w_accumulator.val[w_accumulator_index[i]];
       }
     }
     return target_pointer + 1;
   }
-  int32_t* tmp_COO_crd[2];
-  float* tmp_COO_vals;
-  tmp_COO_crd[0] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
-  tmp_COO_crd[1] = (int32_t*)malloc(sizeof(int32_t) * (accumulator_size + COO_size));
-  tmp_COO_vals = (float*)malloc(sizeof(float) * (accumulator_size + COO_size));
   int accumulator_pointer = 0;
   int content_pointer = 0;
   int target_pointer = 0;
@@ -180,27 +185,21 @@ int32_t Merge_coord_t(int32_t* COO1_crd, int32_t* COO2_crd, float* COO_vals, int
     }
     content_pointer ++;
   }
-  for (int i = 0; i <= target_pointer; i++) {
-    COO1_crd[i] = tmp_COO_crd[0][i];
-    COO2_crd[i] = tmp_COO_crd[1][i];
-    COO_vals[i] = tmp_COO_vals[i];
-  }
-  free(tmp_COO_crd[0]);
-  free(tmp_COO_crd[1]);
-  free(tmp_COO_vals);
   return target_pointer + 1;
 }
 
-int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap) {
+int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   int C1_dimension = (int)(C->dimensions[0]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
   float* restrict C_vals = (float*)(C->vals);
+  int* restrict A1_pos = (int*)(A->indices[0][0]);
+  int* restrict A1_crd = (int*)(A->indices[0][1]);
   int* restrict A2_pos = (int*)(A->indices[1][0]);
   int* restrict A2_crd = (int*)(A->indices[1][1]);
   float* restrict A_vals = (float*)(A->vals);
-  int B1_dimension = (int)(B->dimensions[0]);
-  int B2_dimension = (int)(B->dimensions[1]);
+  int* restrict B1_pos = (int*)(B->indices[0][0]);
+  int* restrict B1_crd = (int*)(B->indices[0][1]);
   int* restrict B2_pos = (int*)(B->indices[1][0]);
   int* restrict B2_crd = (int*)(B->indices[1][1]);
   float* restrict B_vals = (float*)(B->vals);
@@ -212,63 +211,148 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap)
   }
 
   int32_t w_accumulator_size = 0;
-  int32_t w_all_capacity = acc_capacity; 
+  int32_t w_all_capacity_0 = acc_capacity; 
+  int32_t w_all_capacity_1 = acc_capacity; 
   int32_t w_all_size = 0;
+  int32_t* w1_crd_0 = 0;
+  int32_t* w2_crd_0 = 0;
+  float* w_vals_0 = 0;
+  w1_crd_0 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_0);
+  w2_crd_0 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_0);
+  w_vals_0 = (float*)malloc(sizeof(float) * w_all_capacity_0);
+  int32_t* w1_crd_1 = 0;
+  int32_t* w2_crd_1 = 0;
+  float* w_vals_1 = 0;
+  w1_crd_1 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_1);
+  w2_crd_1 = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity_1);
+  w_vals_1 = (float*)malloc(sizeof(float) * w_all_capacity_1);
   int32_t* w1_crd = 0;
   int32_t* w2_crd = 0;
   float* w_vals = 0;
-  w1_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity);
-  w2_crd = (int32_t*)malloc(sizeof(int32_t) * w_all_capacity);
-  w_vals = (float*)malloc(sizeof(float) * w_all_capacity);
+  int32_t all_array_id = 0;
+
   bool w_insertFail = false; 
   int32_t w_point[w_order];
   int32_t w1_pos[w_order];
-  for (int32_t j = 0; j < B1_dimension; j++) {
-    for (int32_t iA = A2_pos[j]; iA < A2_pos[j+1]; iA++) {
-      int32_t i = A2_crd[iA];
-      for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
-        int32_t k = B2_crd[kB];
-        w_point[0] = k;
-        w_point[1] = i; // Transpose
 
-        w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[iA] * B_vals[kB]);
-        if (w_insertFail) {
-          if(w_accumulator_size + w_all_size > w_all_capacity) {
-            w_all_capacity = w_accumulator_size + w_all_size;
-            //std::cout << w_all_capacity << std::endl;
-            w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-            w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-            w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
-          }
-          w_all_size = Merge_coord_t(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_size);
-          w_accumulator_index[0] = 0;
-          w_accumulator_size = 0;
+  //int counter = 0;
+
+  int32_t jA = A1_pos[0];
+  int32_t pA1_end = A1_pos[1];
+  int32_t jB = B1_pos[0];
+  int32_t pB1_end = B1_pos[1];
+
+  while (jA < pA1_end && jB < pB1_end) {
+    int32_t jA0 = A1_crd[jA];
+    int32_t jB0 = B1_crd[jB];
+    int32_t j = TACO_MIN(jA0, jB0);
+    if (jA0 == j && jB0 == j) {
+      for (int32_t iA = A2_pos[j]; iA < A2_pos[j+1]; iA++) {
+        int32_t i = A2_crd[iA];
+        for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
+          int32_t k = B2_crd[kB];
+          w_point[0] = k;
+          w_point[1] = i; // Transpose
+
           w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[iA] * B_vals[kB]);
+          if (w_insertFail) { 
+            //counter += 1; 
+            if ((all_array_id == 0 && w_accumulator_size + w_all_size > w_all_capacity_1) ||
+                (all_array_id == 1 && w_accumulator_size + w_all_size > w_all_capacity_0)) {
+              //w_all_capacity = w_all_capacity * 2;
+              
+              if (all_array_id == 1) {
+                w_all_capacity_0 = w_accumulator_size + w_all_size;
+                w1_crd_0 = (int32_t*)realloc(w1_crd_0, sizeof(int32_t) * w_all_capacity_0);
+                w2_crd_0 = (int32_t*)realloc(w2_crd_0, sizeof(int32_t) * w_all_capacity_0);
+                w_vals_0 = (float*)realloc(w_vals_0, sizeof(float) * w_all_capacity_0);
+              } else {
+                w_all_capacity_1 = w_accumulator_size + w_all_size;
+                w1_crd_1 = (int32_t*)realloc(w1_crd_1, sizeof(int32_t) * w_all_capacity_1);
+                w2_crd_1 = (int32_t*)realloc(w2_crd_1, sizeof(int32_t) * w_all_capacity_1);
+                w_vals_1 = (float*)realloc(w_vals_1, sizeof(float) * w_all_capacity_1);
+              }
+            }
+            if (all_array_id == 0) {
+              w_all_size = Merge_coord_t(w1_crd_0, w2_crd_0, w_vals_0, w1_crd_1, w2_crd_1, w_vals_1, w_all_size, w_accumulator_size);
+            } else {
+              w_all_size = Merge_coord_t(w1_crd_1, w2_crd_1, w_vals_1, w1_crd_0, w2_crd_0, w_vals_0, w_all_size, w_accumulator_size);
+            }
+            all_array_id ^= 1;
+            // Heuristic. (Overflow is not considered)
+            if (acc_capacity < 4194304) {
+              acc_capacity *= 2;
+            } else  {
+              acc_capacity *= 1.5;
+            }
+            free(w_accumulator.crd[0]);
+            free(w_accumulator.crd[1]);
+            free(w_accumulator.val);
+            free(w_accumulator_index);
+            w_accumulator.crd[0] = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
+            w_accumulator.crd[1] = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
+            w_accumulator.val = (float*)malloc(sizeof(float) * acc_capacity);
+            w_accumulator_index = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
+            w_accumulator_size = 0;
+            w_accumulator_index[0] = 0;
+            w_accumulator_size = TryInsert_coord_t(&w_insertFail, w_accumulator_size, w_point, A_vals[iA] * B_vals[kB]);
+          }
         }
       }
     }
+    jA += (int32_t)(jA0 == j);
+    jB += (int32_t)(jB0 == j);
   }
+  
   if (w_accumulator_size > 0) {
     // Sort
     w_accumulator_size = Sort_t(w_accumulator_size, false);
-    // Enlarge
-    if(w_accumulator_size + w_all_size > w_all_capacity) {
-        w_all_capacity = w_accumulator_size + w_all_size;
-        w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-        w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-        w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
-    }
     // Merge
-    w_all_size = Merge_coord_t(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_size);
+    if ((all_array_id == 0 && w_accumulator_size + w_all_size > w_all_capacity_1) ||
+        (all_array_id == 1 && w_accumulator_size + w_all_size > w_all_capacity_0)) {
+      //w_all_capacity = w_all_capacity * 2;
+      
+      if (all_array_id == 1) {
+        w_all_capacity_0 = w_accumulator_size + w_all_size;
+        w1_crd_0 = (int32_t*)realloc(w1_crd_0, sizeof(int32_t) * w_all_capacity_0);
+        w2_crd_0 = (int32_t*)realloc(w2_crd_0, sizeof(int32_t) * w_all_capacity_0);
+        w_vals_0 = (float*)realloc(w_vals_0, sizeof(float) * w_all_capacity_0);
+      } else {
+        w_all_capacity_1 = w_accumulator_size + w_all_size;
+        w1_crd_1 = (int32_t*)realloc(w1_crd_1, sizeof(int32_t) * w_all_capacity_1);
+        w2_crd_1 = (int32_t*)realloc(w2_crd_1, sizeof(int32_t) * w_all_capacity_1);
+        w_vals_1 = (float*)realloc(w_vals_1, sizeof(float) * w_all_capacity_1);
+      }
+    }
+ 
+    if (all_array_id == 0) {
+      w_all_size = Merge_coord_t(w1_crd_0, w2_crd_0, w_vals_0, w1_crd_1, w2_crd_1, w_vals_1, w_all_size, w_accumulator_size);
+    } else {
+      w_all_size = Merge_coord_t(w1_crd_1, w2_crd_1, w_vals_1, w1_crd_0, w2_crd_0, w_vals_0, w_all_size, w_accumulator_size);
+    }   
+    all_array_id ^= 1;
     // Clear
     w_accumulator_size = 0;
-    w_accumulator_index[0] = 0;
+  }
+  if (all_array_id == 0) {
+    w1_crd = w1_crd_0;
+    w2_crd = w2_crd_0;
+    w_vals = w_vals_0;
+    free(w_vals_1);
+    free(w1_crd_1);
+    free(w2_crd_1);
+  } else {
+    w1_crd = w1_crd_1;
+    w2_crd = w2_crd_1;
+    w_vals = w_vals_1;
+    free(w_vals_0);
+    free(w1_crd_0);
+    free(w2_crd_0);
   }
   w1_pos[0] = 0;
   w1_pos[1] = w_all_size;
   int32_t kw = w1_pos[0];
   int32_t pw1_end = w1_pos[1];
-
 
   while (kw < pw1_end) {
     int32_t k = w1_crd[kw];
@@ -302,7 +386,7 @@ void CSC_CSR_T_coord(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32
   w_accumulator.crd[1] = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
   w_accumulator.val = (float*)malloc(sizeof(float) * acc_capacity);
   w_accumulator_index = (int32_t*)malloc(sizeof(int32_t) * acc_capacity);
-  compute(C,A,B,w_cap);
+  compute(C,A,B);
   free(w_accumulator.crd[0]);
   free(w_accumulator.crd[1]);
   free(w_accumulator.val);
