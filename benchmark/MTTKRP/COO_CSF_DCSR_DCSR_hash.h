@@ -347,6 +347,12 @@ int compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, taco_tensor_t 
   A->vals = (float*)(w_vals);
   A->vals_size = w_all_size;
 
+  // cout << "[";
+  // for (int k = 0; k < 10; k++) {
+  //   cout << "(" << A->indices[1][0][k] << "," << A->indices[1][1][k] << "," << A->vals[k] << "),";
+  // }
+  // cout << "]" << endl;
+
   free(w_accumulator.values_size);
   free(w_accumulator.values_capacity);
   free(w_accumulator.buffer);

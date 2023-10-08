@@ -1,2 +1,2 @@
 #./test-mttkrp /home/zgh23/code/SparseWS/data/origin/5-5-5-9.tns /home/zgh23/code/SparseWS/data/origin/rec/rec_2_5_2_6_0.1333.mtx 0 0 0 /home/zgh23/code/SparseWS/data/origin/rec/rec_2_5_2_6_0.1333.mtx 5,5,5
-./test-mttkrp /scratch/zgh23/sparse_ten/nell-2.tns /home/zgh23/code/ctf/C.mtx 1 0 0 /home/zgh23/code/ctf/D.mtx 12092,9184,28818
+/home/zgh23/code/SparseWS/test-mttkrp /scratch/zgh23/sparse_ten/nell-2.tns /home/zgh23/code/ctf/C.mtx 0 0 0 /home/zgh23/code/ctf/D.mtx 12092,9184,28818 /home/zgh23/code/ctf/A.mtx

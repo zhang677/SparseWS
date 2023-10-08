@@ -609,6 +609,15 @@ void check_csc_taco_eigen(taco_tensor_t& C, EigenCSC& C_true){
   compare_array<float>(C.vals, C_true.valuePtr(), nnz);
 }
 
+void check_coo_taco_taco(taco_tensor_t& C, taco_tensor_t& C_true){
+  int nnz = C_true.vals_size;
+  cout << "row: " << C.indices[0][0][0] << " , " << C_true.indices[0][0][0] << (C.indices[0][0][0] == C_true.indices[0][0][0] ? "True" : "False") << endl;
+  cout << "nnz: " << (C.indices[1][0][C.indices[0][0][0]] == nnz ? "True": "False") << endl;
+  compare_array<int>(C.indices[1][0], C_true.indices[1][0], C.indices[0][0][0] + 1);
+  compare_array<int>(C.indices[1][1], C_true.indices[1][1], nnz);
+  compare_array<float>(C.vals, C_true.vals, nnz);
+}
+
 taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, vector<int>& dims) {
   // 
   // sptensor_t * tt;
@@ -697,6 +706,144 @@ taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, v
   }
 
   return csft;
+}
+
+void read_mtx_csr_keep_value(const char *filename, int &nrow, int &ncol, int &nnz,
+                              std::vector<int> &csr_indptr_buffer,
+                              std::vector<int> &csr_indices_buffer,
+                              std::vector<float> &csr_value_buffer,
+                              bool one_based = true) {
+  FILE *f;
+
+  if ((f = fopen(filename, "r")) == NULL) {
+    printf("File %s not found", filename);
+    exit(EXIT_FAILURE);
+  }
+  
+  MM_typecode matcode;
+  // Read MTX banner
+  if (mm_read_banner(f, &matcode) != 0) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (mm_read_mtx_crd_size(f, &nrow, &ncol, &nnz) != 0) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (!mm_is_matrix(matcode) || !mm_is_sparse(matcode) ||
+      !mm_is_coordinate(matcode) || !mm_is_real(matcode) || !mm_is_general(matcode)) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+
+  std::vector<std::tuple<int, int, float>> coords;
+  int row_id, col_id;
+  float val;
+  for (int64_t i = 0; i < nnz; i++) {
+    if (fscanf(f, "%d", &row_id) == EOF) {
+      std::cout << "Error: not enough rows in mtx file.\n";
+      exit(EXIT_FAILURE);
+    } else {
+      fscanf(f, "%d", &col_id);
+      fscanf(f, "%f", &val);
+      // mtx format is 1-based
+      if (one_based) {
+        coords.push_back(std::make_tuple(row_id - 1, col_id - 1, val));
+      } else {
+        coords.push_back(std::make_tuple(row_id, col_id, val));
+      }
+    }
+  }
+  std::vector<int> index;
+  boost::range::push_back(index, boost::irange(0, nnz));
+  std::sort(index.begin(), index.end(),
+        [&coords](int i1, int i2) {
+          return std::get<0>(coords[i1]) == std::get<0>(coords[i2]) ? std::get<1>(coords[i1]) < std::get<1>(coords[i2]) : std::get<0>(coords[i1]) < std::get<0>(coords[i2]);
+        });
+  
+  csr_indptr_buffer.clear();
+  csr_indices_buffer.clear();
+  csr_value_buffer.clear();
+
+  int curr_pos = 0;
+  csr_indptr_buffer.push_back(0);
+
+  for (int64_t row = 0; row < nrow; row++) {
+    while ((curr_pos < nnz) && (std::get<0>(coords[index[curr_pos]]) == row)) {
+      csr_indices_buffer.push_back(std::get<1>(coords[index[curr_pos]]));
+      csr_value_buffer.push_back(std::get<2>(coords[index[curr_pos]]));
+      curr_pos++;
+    }
+    // assert((std::get<0>(coords[curr_pos]) > row || curr_pos == nnz));
+    csr_indptr_buffer.push_back(curr_pos);
+  }
+  nnz = csr_indices_buffer.size();
+  fclose(f);
+}
+
+void read_mtx_coo(const char *filename, int &nrow, int &ncol, int &nnz, 
+                  std::vector<int> &coo_rowind_buffer,
+                  std::vector<int> &coo_colind_buffer,
+                  std::vector<float> &coo_value_buffer,
+                  bool one_based = true) {
+  FILE *f;
+
+  if ((f = fopen(filename, "r")) == NULL) {
+    printf("File %s not found", filename);
+    exit(EXIT_FAILURE);
+  }
+  
+  MM_typecode matcode;
+  // Read MTX banner
+  if (mm_read_banner(f, &matcode) != 0) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (mm_read_mtx_crd_size(f, &nrow, &ncol, &nnz) != 0) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+  if (!mm_is_matrix(matcode) || !mm_is_sparse(matcode) ||
+      !mm_is_coordinate(matcode) || !mm_is_real(matcode) || !mm_is_general(matcode)) {
+    printf("Could not process this file.\n");
+    exit(EXIT_FAILURE);
+  }
+
+  std::vector<std::tuple<int, int, float>> coords;
+  int row_id, col_id;
+  float val;
+  for (int64_t i = 0; i < nnz; i++) {
+    if (fscanf(f, "%d", &row_id) == EOF) {
+      std::cout << "Error: not enough rows in mtx file.\n";
+      exit(EXIT_FAILURE);
+    } else {
+      fscanf(f, "%d", &col_id);
+      fscanf(f, "%f", &val);
+      // mtx format is 1-based
+      if (one_based) {
+        coords.push_back(std::make_tuple(row_id - 1, col_id - 1, val));
+      } else {
+        coords.push_back(std::make_tuple(row_id, col_id, val));
+      }
+    }
+  }
+  std::vector<int> index;
+  boost::range::push_back(index, boost::irange(0, nnz));
+  std::sort(index.begin(), index.end(),
+        [&coords](int i1, int i2) {
+          return std::get<0>(coords[i1]) == std::get<0>(coords[i2]) ? std::get<1>(coords[i1]) < std::get<1>(coords[i2]) : std::get<0>(coords[i1]) < std::get<0>(coords[i2]);
+        });
+  
+  coo_rowind_buffer.clear();
+  coo_colind_buffer.clear();
+  coo_value_buffer.clear();
+
+  for (int64_t i = 0; i < nnz; i++) {
+    coo_rowind_buffer.push_back(std::get<0>(coords[index[i]]));
+    coo_colind_buffer.push_back(std::get<1>(coords[index[i]]));
+    coo_value_buffer.push_back(std::get<2>(coords[index[i]]));
+  }
+  fclose(f);
 }
 
 void print_taco_tensor_CSF(taco_tensor_t* t) {

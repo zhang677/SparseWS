@@ -857,9 +857,10 @@ using namespace std;
 //     CSC_CSR_T_coord(&A, &B, &C, w_cap, repeat, result_name);
 // }
 
-void mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filename2, const string filename3, const int repeat, bool verbose, vector<int>& dims) {
+void check_mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filename2, const string filename3, const string filename4, const int repeat, bool verbose, vector<int>& dims) {
     taco_tensor_t B;
     read_tns_csf(filename1, B, dims);
+    std::cout << "B: " << B.dimensions[0] << "," << B.dimensions[1] << "," << B.dimensions[2] << "," << B.vals_size << std::endl;
     vector<int> indptr;
     vector<int> indices;
     vector<int> id_buffer;
@@ -867,20 +868,33 @@ void mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filename2, 
     int nrow;
     int ncol;
     int nnz;
-    read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    read_mtx_csr_keep_value(filename2.data(), nrow, ncol, nnz, indptr, indices, value, false /*one_base*/);
     taco_tensor_t C = CC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    std::cout << "C: " << nrow << "," << ncol << "," << nnz << std::endl; // 12092,32,
     indptr.clear();
     id_buffer.clear();
     indices.clear();
     value.clear();
-    read_mtx_csr(filename3.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    read_mtx_csr_keep_value(filename3.data(), nrow, ncol, nnz, indptr, indices, value, false /*one_base*/);
     taco_tensor_t D = CC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    std::cout << "D: " << nrow << "," << ncol << "," << nnz << std::endl; // 9184,32,
     taco_tensor_t A;
     init_taco_tensor_DC(&A, dims[2], ncol, {0,1});
+    std::cout << "A: " << nrow << "," << ncol << std::endl; // 28818,32
 
-    int w_cap = pow(2,int(log2(nnz * dims[2] / nrow))); // heuristic
+    int w_cap = pow(2,int(log2(1.0 * nnz * dims[2] / nrow))); // heuristic
+    std::cout << "w_cap: " << w_cap << std::endl; 
     int warmup = 1;
-    double duration_taco = COO_CSF_DCSR_DCSR_hash(&A, &B, &C, &D, w_cap, warmup, repeat, false /* in bench*/, verbose);
+    double duration_taco = COO_CSF_DCSR_DCSR_hash(&A, &B, &C, &D, w_cap, warmup, repeat, false /*in bench*/, verbose);
+
+    id_buffer.clear();
+    indices.clear();
+    value.clear();
+    read_mtx_coo(filename4.data(), nrow, ncol, nnz, id_buffer, indices, value, false/*one_base*/);
+    cout << "nnz: " << A.vals_size << "," << nnz << endl;
+    compare_array<int>(A.indices[1][0], id_buffer.data(), nnz);
+    compare_array<int>(A.indices[1][1], indices.data(), nnz);
+    compare_array<float>(A.vals, value.data(), nnz);
 }
 
 void bench_mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filename2, const string filename3, const int repeat, bool verbose, vector<int>& dims) {
@@ -918,6 +932,7 @@ int main(int argc, char* argv[]) {
     const int verbose = (argc > 5) ? stoi(argv[5]) : 0;
     const string result_name = (argc > 6) ? argv[6] : "./data/test.csv";
     const string tensorDims = (argc > 7) ? argv[7] : "0,1";
+    const string gold_name = (argc > 8) ? argv[8] : "./data/test_gold.mtx";
 
     pid_t pid = getpid();
 
@@ -947,7 +962,8 @@ int main(int argc, char* argv[]) {
     //check_eigen_map_outer(filename1, filename2, repeat, verbose);
     //check_eigen_hash_outer_CC(filename1, filename2, repeat, w_cap, verbose);
     //check_eigen_coord_outer_CC(filename1, filename2, repeat, w_cap, verbose);
-    bench_mttkrp_dcsf_dcsr_dcsr_hash(filename1, filename2, result_name, repeat, verbose, dims); // A(i,j) = B(k,l,i) * C(k,j) * D(l,j);
+    check_mttkrp_dcsf_dcsr_dcsr_hash(filename1, filename2, result_name, gold_name, repeat, verbose, dims); // A(i,j) = B(k,l,i) * C(k,j) * D(l,j);
+    //bench_mttkrp_dcsf_dcsr_dcsr_hash(filename1, filename2, result_name, repeat, verbose, dims); // A(i,j) = B(k,l,i) * C(k,j) * D(l,j);
 
 
     //profile_coord_bucket(filename1, filename2, repeat, w_cap, result_name);
