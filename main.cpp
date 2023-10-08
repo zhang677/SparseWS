@@ -34,7 +34,8 @@
 // #include "benchmark/DCSC_DCSR_T/DCSC_DCSR_T_coord_index_chase_flex.h"
 // #include "benchmark/DCSC_DCSR_T/DCSC_DCSR_T_coord_index_chase_flex.h"
 // #include "benchmark/DCSC_DCSR_T/DCSC_DCSR_T_coord_bucket.h"
-#include "benchmark/CSC_CSR_T/CSC_CSR_T_eigen.h"
+#include "benchmark/MTTKRP/COO_CSF_DCSR_DCSR_hash.h"
+// #include "benchmark/CSC_CSR_T/CSC_CSR_T_eigen.h"
 //#include "benchmark/CSR_CSR/CSR_CSR_eigen.h"
 //#include "benchmark/CSR_CSR/CSR_CSR_taco.h"
 //#include "benchmark/CSR_CSR/CSR_CSR_coord_index_chase_flex.h"
@@ -856,10 +857,57 @@ using namespace std;
 //     CSC_CSR_T_coord(&A, &B, &C, w_cap, repeat, result_name);
 // }
 
-void mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const int repeat, bool verbose, vector<int>& dims) {
+void mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filename2, const string filename3, const int repeat, bool verbose, vector<int>& dims) {
     taco_tensor_t B;
     read_tns_csf(filename1, B, dims);
-    print_taco_tensor_CSF(&B);
+    vector<int> indptr;
+    vector<int> indices;
+    vector<int> id_buffer;
+    vector<float> value;
+    int nrow;
+    int ncol;
+    int nnz;
+    read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    taco_tensor_t C = CC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    indptr.clear();
+    id_buffer.clear();
+    indices.clear();
+    value.clear();
+    read_mtx_csr(filename3.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value);
+    taco_tensor_t D = CC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    taco_tensor_t A;
+    init_taco_tensor_DC(&A, dims[2], ncol, {0,1});
+
+    int w_cap = pow(2,int(log2(nnz * dims[2] / nrow))); // heuristic
+    int warmup = 1;
+    double duration_taco = COO_CSF_DCSR_DCSR_hash(&A, &B, &C, &D, w_cap, warmup, repeat, false /* in bench*/, verbose);
+}
+
+void bench_mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filename2, const string filename3, const int repeat, bool verbose, vector<int>& dims) {
+    taco_tensor_t B;
+    read_tns_csf(filename1, B, dims);
+    vector<int> indptr;
+    vector<int> indices;
+    vector<int> id_buffer;
+    vector<float> value;
+    int nrow;
+    int ncol;
+    int nnz;
+    read_mtx_csr(filename2.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value, false);
+    taco_tensor_t C = CC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    indptr.clear();
+    id_buffer.clear();
+    indices.clear();
+    value.clear();
+    read_mtx_csr(filename3.data(), nrow, ncol, nnz, indptr, indices, id_buffer, value, false);
+    taco_tensor_t D = CC_to_taco_tensor(indptr,indices,value,nrow,ncol,nnz,{0,1});
+    taco_tensor_t A;
+    init_taco_tensor_DC(&A, dims[2], ncol, {0,1});
+
+    int w_cap = pow(2,int(log2(nnz * dims[2] / nrow))); // heuristic
+    int warmup = 1;
+    double duration_taco = COO_CSF_DCSR_DCSR_hash(&A, &B, &C, &D, w_cap, warmup, repeat, true /* in bench*/, verbose);
+    std::cout << "duration_taco: " << duration_taco * 1000 << " ms" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
@@ -899,7 +947,7 @@ int main(int argc, char* argv[]) {
     //check_eigen_map_outer(filename1, filename2, repeat, verbose);
     //check_eigen_hash_outer_CC(filename1, filename2, repeat, w_cap, verbose);
     //check_eigen_coord_outer_CC(filename1, filename2, repeat, w_cap, verbose);
-    mttkrp_dcsf_dcsr_dcsr_hash(filename1, repeat, verbose, dims); // A(i,j) = B(k,l,i) * C(k,j) * D(l,j);
+    bench_mttkrp_dcsf_dcsr_dcsr_hash(filename1, filename2, result_name, repeat, verbose, dims); // A(i,j) = B(k,l,i) * C(k,j) * D(l,j);
 
 
     //profile_coord_bucket(filename1, filename2, repeat, w_cap, result_name);

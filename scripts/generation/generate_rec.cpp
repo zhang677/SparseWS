@@ -35,13 +35,13 @@ int main(int argc, char** argv) {
     int nnz = nz_row * nz_col;
     double density = 1.0 * nnz / (row * col);
     std::ostringstream oss;
-    oss << std::fixed << std::setprecision(6) << density;
+    oss << std::fixed << std::setprecision(4) << density;
     std::ofstream file;
     std::cout << "Generating..." << std::endl;
     file.open(folder + "rec_" + std::to_string(nz_row) + "_" + std::to_string(row) + "_" + std::to_string(nz_col) + "_" + std::to_string(col) + "_" + oss.str() + ".mtx", std::ios_base::app);
     file << "%%MatrixMarket matrix coordinate real general" << std::endl;
-    file << row << " " << row << " " << nnz << std::endl;
-    std::cout << row << " " << row << " " << nnz << std::endl;
+    file << row << " " << col << " " << nnz << std::endl;
+    std::cout << row << " " << col << " " << nnz << std::endl;
     Timer timer;
     timer.reset();
     // Set random seed to 42

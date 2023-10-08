@@ -54,7 +54,8 @@ void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
                    std::vector<int> &csr_indptr_buffer,
                    std::vector<int> &csr_indices_buffer,
                    std::vector<int> &coo_rowind_buffer,
-                   std::vector<float> &csr_value_buffer) {
+                   std::vector<float> &csr_value_buffer,
+                   bool one_based = true) {
   FILE *f;
 
   if ((f = fopen(filename, "r")) == NULL) {
@@ -92,7 +93,11 @@ void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
       fscanf(f, "%d", &col_id);
       fscanf(f, "%f", &dummy);
       // mtx format is 1-based
-      coords.push_back(std::make_tuple(row_id - 1, col_id - 1));
+      if (one_based) {
+        coords.push_back(std::make_tuple(row_id - 1, col_id - 1));
+      } else {
+        coords.push_back(std::make_tuple(row_id, col_id));
+      }
       value_temp.push_back(dummy);
     }
   }
@@ -576,6 +581,7 @@ void print_taco_tensor_CC(taco_tensor_t* t) {
       cout<<t->indices[1][1][i]<<",";
     }
     cout<<"]"<<endl;
+    cout<<"[";
     for (int i=0; i<t->vals_size; i++) {
       cout<<t->vals[i]<<",";
     }
@@ -632,7 +638,7 @@ taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, v
   // }
   for (int i = 0; i < tensor->nmodes; ++i) {
     csft.dimensions[i] = dims[i];
-    std::cout << tensor->dim_perm[i] << std::endl;
+    // std::cout << tensor->dim_perm[i] << std::endl;
   }
   csft.indices = new int32_t**[tensor->nmodes];
 
@@ -641,7 +647,7 @@ taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, v
   //   cout<<tensor->pt->fids[0][k]<<",";
   // }
   // cout<<"]"<<endl;
-  cout<< (tensor->pt->fids[0] == NULL) << endl;
+  // cout<< (tensor->pt->fids[0] == NULL) << endl;
 
 
   for (int i = 1; i < tensor->nmodes; ++i) {
@@ -715,6 +721,24 @@ void print_taco_tensor_CSF(taco_tensor_t* t) {
     }
     cout<<"]"<<endl;           
 
+}
+
+void print_taco_tensor_COO(taco_tensor_t* t) {
+  cout<<"[";
+  for (int i = 0; i < t->vals_size; ++i){
+    cout << t->indices[1][0][i] << ",";
+  }
+  cout<<"]"<<endl; 
+  cout<<"[";
+  for (int i = 0; i < t->vals_size; ++i){
+    cout << t->indices[1][1][i] << ",";
+  }
+  cout<<"]"<<endl; 
+  cout<<"[";
+  for (int i = 0; i < t->vals_size; ++i){
+    cout << t->vals[i] << ",";
+  }
+  cout<<"]"<<endl; 
 }
 
 class Timer {
