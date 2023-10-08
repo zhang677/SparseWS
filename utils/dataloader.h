@@ -14,10 +14,40 @@
 #include <tuple>
 #include <typeinfo>
 #include <vector>
+#include <set>
 #include <chrono>
+#include "splatt.h"
+// #include "sptensor.h"
+// #include "csf.h"
+
+
 using namespace std;
 typedef int Index;
 typedef float DType;
+
+std::vector<std::string> split(const std::string &str, const std::string &delim, bool keepDelim) {
+  std::vector<std::string> results;
+  size_t prev = 0;
+  size_t next = 0;
+
+  while ((next = str.find(delim, prev)) != std::string::npos) {
+    if (next - prev != 0) {
+      std::string substr = ((keepDelim) ? delim : "")
+                         + str.substr(prev, next-prev);
+      results.push_back(substr);
+    }
+    prev = next + delim.size();
+  }
+
+  if (prev < str.size()) {
+    string substr = ((keepDelim) ? delim : "") + str.substr(prev);
+    results.push_back(substr);
+  }
+
+  return results;
+}
+
+
 // Load sparse matrix from an mtx file. Only non-zero positions are loaded,
 // and values are dropped.
 void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
@@ -573,6 +603,119 @@ void check_csc_taco_eigen(taco_tensor_t& C, EigenCSC& C_true){
   compare_array<float>(C.vals, C_true.valuePtr(), nnz);
 }
 
+taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, vector<int>& dims) {
+  // 
+  // sptensor_t * tt;
+  // tt = tt_read(tensor_path.c_str());
+  // splatt_csf tensor;
+  //   for(idx_t m=0; m < tt->nmodes; ++m) {
+  //   tensor.dim_perm[m] = m;
+  // }
+  // csf_alloc_mode(tt, CSF_MODE_CUSTOM, 0, &tensor, opts);
+  
+  double *cpd_opts = splatt_default_opts();
+  cpd_opts[SPLATT_OPTION_NTHREADS] = omp_get_num_threads();
+  cpd_opts[SPLATT_OPTION_NITER] = 0;
+  cpd_opts[SPLATT_OPTION_CSF_ALLOC] = SPLATT_CSF_ONEMODE;
+  cpd_opts[SPLATT_OPTION_TILE] = SPLATT_DENSETILE;
+  cpd_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
+
+  splatt_idx_t nmodes;
+  splatt_csf *tensor;
+  splatt_csf_load(tensor_path.c_str(), &nmodes, &tensor, cpd_opts);
+  splatt_free_opts(cpd_opts);
+
+  csft.dimensions = new int32_t[tensor->nmodes];
+  // for (int i = 0; i < tensor->nmodes; ++i) {
+  //   csft.dimensions[i] = tensor->dims[tensor->dim_perm[i]];
+  //   std::cout << tensor->dim_perm[i] << std::endl;
+  // }
+  for (int i = 0; i < tensor->nmodes; ++i) {
+    csft.dimensions[i] = dims[i];
+    std::cout << tensor->dim_perm[i] << std::endl;
+  }
+  csft.indices = new int32_t**[tensor->nmodes];
+
+  // cout<<"[";
+  // for (int k=0; k<tensor->pt->nfibs[0]; k++){
+  //   cout<<tensor->pt->fids[0][k]<<",";
+  // }
+  // cout<<"]"<<endl;
+  cout<< (tensor->pt->fids[0] == NULL) << endl;
+
+
+  for (int i = 1; i < tensor->nmodes; ++i) {
+    csft.indices[i] = new int32_t*[2];
+    csft.indices[i][0] = new int32_t[tensor->pt->nfibs[i-1] + 1];
+    for (int k = 0; k <= tensor->pt->nfibs[i-1]; ++k) {
+      csft.indices[i][0][k] = (int32_t)tensor->pt->fptr[i - 1][k];
+    }
+    csft.indices[i][1] = new int32_t[tensor->pt->nfibs[i]];
+    for (int k = 0; k < tensor->pt->nfibs[i]; ++k) {
+      csft.indices[i][1][k] = (int32_t)tensor->pt->fids[i][k];
+    }
+  }
+  csft.vals_size = tensor->pt->nfibs[tensor->nmodes - 1];
+  csft.vals = new float[csft.vals_size];
+  for (int i = 0; i < csft.vals_size; ++i) {
+    csft.vals[i] = (float)tensor->pt->vals[i];
+  }
+  csft.order = tensor->nmodes;
+
+  std::set<int> coords;
+  int row_id;
+  FILE *f;
+  if ((f = fopen(tensor_path.c_str(), "r")) == NULL) {
+    printf("File %s not found", tensor_path.c_str());
+    exit(EXIT_FAILURE);
+  }
+  for (int64_t i = 0; i < csft.vals_size; i++) {
+    if (fscanf(f, "%d", &row_id) == EOF) {
+      std::cout << "Error: not enough rows in tns file.\n";
+      exit(EXIT_FAILURE);
+    } else {
+      // Dummp the remaining line
+      fscanf(f, "%*[^\n]\n");
+      coords.insert(row_id - 1);
+    }
+  }
+  fclose(f);
+  csft.indices[0] = new int32_t*[2];
+  csft.indices[0][0] = new int32_t[2];
+  csft.indices[0][1] = new int32_t[coords.size()];
+  csft.indices[0][0][0] = 0;
+  csft.indices[0][0][1] = coords.size();
+  int i = 0;
+  for (auto it = coords.begin(); it != coords.end(); ++it) {
+    csft.indices[0][1][i++] = (*it);
+  }
+
+  return csft;
+}
+
+void print_taco_tensor_CSF(taco_tensor_t* t) {
+    cout<<"("<<t->dimensions[0]<<","<<t->dimensions[1]<<","<<t->dimensions[2]<<")"<<endl;
+    int nnz = 1;
+    for (int j = 0; j < t->order; j++) {
+      cout<<"[";
+      for (int i=0; i<=nnz; i++){
+        cout<<t->indices[j][0][i]<<",";
+      }
+      cout<<"]"<<endl;
+      cout<<"[";
+      for (int i=0; i<t->indices[j][0][nnz]; i++) {
+        cout<<t->indices[j][1][i]<<",";
+      }
+      cout<<"]"<<endl;
+      nnz = t->indices[j][0][nnz];
+    }
+    cout<<"[";
+    for (int i=0; i<t->vals_size; i++) {
+      cout<<t->vals[i]<<",";
+    }
+    cout<<"]"<<endl;           
+
+}
 
 class Timer {
 public:
