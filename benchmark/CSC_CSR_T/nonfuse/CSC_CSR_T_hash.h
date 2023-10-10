@@ -1,5 +1,4 @@
-#include "../../utils/dataloader.h"
-#include "../../utils/lib.h"
+#include "../../../utils/dataloader.h"
 #include <math.h> 
 
 const int32_t INTMAX = 2147483647;
@@ -230,25 +229,25 @@ void refresh_wspace(HashTable* w) {
   // outfile2.close();
 }
 
-int compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, taco_tensor_t *D, int32_t w_accumulator_capacity) {
-  int A2_dimension = (int)(A->dimensions[1]);
-  int* restrict B1_pos = (int*)(B->indices[0][0]);
-  int* restrict B1_crd = (int*)(B->indices[0][1]);
-  int* restrict B2_pos = (int*)(B->indices[1][0]);
-  int* restrict B2_crd = (int*)(B->indices[1][1]);
-  int* restrict B3_pos = (int*)(B->indices[2][0]);
-  int* restrict B3_crd = (int*)(B->indices[2][1]);
-  float* restrict B_vals = (float*)(B->vals);
-  int* restrict C1_pos = (int*)(C->indices[0][0]);
-  int* restrict C1_crd = (int*)(C->indices[0][1]);
+int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
+  int C1_dimension = (int)(C->dimensions[0]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
   float* restrict C_vals = (float*)(C->vals);
-  int* restrict D1_pos = (int*)(D->indices[0][0]);
-  int* restrict D1_crd = (int*)(D->indices[0][1]);
-  int* restrict D2_pos = (int*)(D->indices[1][0]);
-  int* restrict D2_crd = (int*)(D->indices[1][1]);
-  float* restrict D_vals = (float*)(D->vals);
+  int* restrict A2_pos = (int*)(A->indices[1][0]);
+  int* restrict A2_crd = (int*)(A->indices[1][1]);
+  float* restrict A_vals = (float*)(A->vals);
+  int B1_dimension = (int)(B->dimensions[0]);
+  int B2_dimension = (int)(B->dimensions[1]);
+  int* restrict B2_pos = (int*)(B->indices[1][0]);
+  int* restrict B2_crd = (int*)(B->indices[1][1]);
+  float* restrict B_vals = (float*)(B->vals);
+
+  C2_pos = (int32_t*)malloc(sizeof(int32_t) * (C1_dimension + 1));
+  C2_pos[0] = 0;
+  for (int32_t pC2 = 1; pC2 < (C1_dimension + 1); pC2++) {
+    C2_pos[pC2] = 0;
+  }
 
   HashTable w_accumulator;
   init_hashTable(&w_accumulator, w_accumulator_capacity);
@@ -268,67 +267,33 @@ int compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, taco_tensor_t 
   int32_t* restrict w_point = 0;
   w_point = (int32_t*)malloc(sizeof(int32_t) * 2);
 
-  int32_t kB = B1_pos[0];
-  int32_t pB1_end = B1_pos[1];
-  int32_t kC = C1_pos[0];
-  int32_t pC1_end = C1_pos[1];
-  //printf("kB: %d, pB1_end: %d, kC: %d, pC1_end: %d\n", kB, pB1_end, kC, pC1_end);
-
-  while (kB < pB1_end && kC < pC1_end) {
-    int32_t kB0 = B1_crd[kB];
-    int32_t kC0 = C1_crd[kC];
-    int32_t k = TACO_MIN(kB0,kC0);
-    if (kB0 == k && kC0 == k) {
-      int32_t lB = B2_pos[kB];
-      int32_t pB2_end = B2_pos[(kB + 1)];
-      int32_t lD = D1_pos[0];
-      int32_t pD1_end = D1_pos[1];
-
-      while (lB < pB2_end && lD < pD1_end) {
-        int32_t lB0 = B2_crd[lB];
-        int32_t lD0 = D1_crd[lD];
-        int32_t l = TACO_MIN(lB0,lD0);
-        if (lB0 == l && lD0 == l) {
-          for (int32_t iB = B3_pos[lB]; iB < B3_pos[(lB + 1)]; iB++) {
-            int32_t i = B3_crd[iB];
-            w_point[0] = i;
-            int32_t jC = C2_pos[kC];
-            int32_t pC2_end = C2_pos[(kC + 1)];
-            int32_t jD = D2_pos[lD];
-            int32_t pD2_end = D2_pos[(lD + 1)];
-
-            while (jC < pC2_end && jD < pD2_end) {
-              int32_t jC0 = C2_crd[jC];
-              int32_t jD0 = D2_crd[jD];
-              int32_t j = TACO_MIN(jC0,jD0);
-              w_point[1] = j;
-              if (jC0 == j && jD0 == j) {
-                // std::cout << "TryInsert: " << w_point[0] << " , " << w_point[1] << std::endl;
-                TryInsert_hash(w_insertFail, &w_accumulator, w_point, (B_vals[iB] * C_vals[jC] * D_vals[jD]), A2_dimension);
-                
-                if (w_insertFail[0]) {
-                    if (w_accumulator.numel + w_all_size > w_all_capacity) {
-                        w_all_capacity = w_accumulator.numel + w_all_size;
-                        w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-                        w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-                        w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
-                    }
-                    w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
-                    refresh_wspace(&w_accumulator);
-                    TryInsert_hash(w_insertFail, &w_accumulator, w_point, (B_vals[iB] * C_vals[jC] * D_vals[jD]), A2_dimension);
-                }
-              }
-              jC += (int32_t)(jC0 == j);
-              jD += (int32_t)(jD0 == j);
-            }
+  for (int32_t j = 0; j < B1_dimension; j++) {
+    for (int32_t iA = A2_pos[j]; iA < A2_pos[(j + 1)]; iA++) {
+      int32_t i = A2_crd[iA];
+      w_point[0] = i;
+      for (int32_t kB = B2_pos[j]; kB < B2_pos[(j + 1)]; kB++) {
+        int32_t k = B2_crd[kB];
+        w_point[1] = k;
+        //std::cout << "TryInsert: " << w_point[0] << " , " << w_point[1] << std::endl;
+        TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
+        
+        if (w_insertFail[0]) {
+          if (w_accumulator.numel + w_all_size > w_all_capacity) {
+            w_all_capacity = w_accumulator.numel + w_all_size;
+            w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+            w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+            w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
           }
+          w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
+          // print_array(w1_crd, w_all_size);
+          // print_array(w2_crd, w_all_size);
+          // print_array(w_vals, w_all_size);
+          refresh_wspace(&w_accumulator);
+          TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[iA] * B_vals[kB]), B2_dimension);
         }
-        lB += (int32_t)(lB0 == l);
-        lD += (int32_t)(lD0 == l);
+        // print_hashTable(&w_accumulator);
       }
     }
-    kB += (int32_t)(kB0 == k);
-    kC += (int32_t)(kC0 == k);
   }
   if (w_accumulator.numel > 0) {
     copy_buffer(&w_accumulator);
@@ -342,50 +307,131 @@ int compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, taco_tensor_t 
     w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
   }
 
-  A->indices[1][0] = (int32_t*)(w1_crd); 
-  A->indices[1][1] = (int32_t*)(w2_crd); // It should be A->indices[2][0]. However, it works because we initial the CSR and CSR has indices[1][1]. Therefore, don't change the init code!!!
-  A->vals = (float*)(w_vals);
-  A->vals_size = w_all_size;
+  w1_pos[0] = 0;
+  w1_pos[1] = w_all_size;
+  int32_t kw = w1_pos[0];
+  int32_t pw1_end = w1_pos[1];
 
-  // cout << "[";
-  // for (int k = 0; k < 10; k++) {
-  //   cout << "(" << A->indices[1][0][k] << "," << A->indices[1][1][k] << "," << A->vals[k] << "),";
-  // }
-  // cout << "]" << endl;
+  while (kw < pw1_end) {
+    int32_t k = w1_crd[kw];
+    int32_t w1_segend = kw + 1;
+    while (w1_segend < pw1_end && w1_crd[w1_segend] == k) {
+      w1_segend++;
+    }
+    C2_pos[k + 1] = w1_segend - kw;
+    kw = w1_segend;
+  }
 
+  for (int i = 0; i < w_accumulator.table_size; i++) {
+    if (w_accumulator.values_capacity[i] >0) {
+      free(w_accumulator.values[i]);
+    }
+  }
   free(w_accumulator.values_size);
   free(w_accumulator.values_capacity);
   free(w_accumulator.buffer);
   free(w_accumulator.values);
   free(w_insertFail);
   free(w_point);
+  free(w1_crd);
+  free(w1_pos);
+
+  int32_t csC2 = 0;
+  for (int32_t pC2 = 1; pC2 < (C1_dimension + 1); pC2++) {
+    csC2 += C2_pos[pC2];
+    C2_pos[pC2] = csC2;
+  }
+
+  C->indices[1][0] = (int32_t*)(C2_pos);
+  C->indices[1][1] = (int32_t*)(w2_crd);
+  C->vals = (float*)w_vals;
 
   return 0;
 }
 
-double COO_CSF_DCSR_DCSR_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, taco_tensor_t* D, int32_t w_cap, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
+int transpose(taco_tensor_t *A, taco_tensor_t *B) {
+  int A1_dimension = (int)(A->dimensions[0]);
+  int* restrict A2_pos = (int*)(A->indices[1][0]);
+  int* restrict A2_crd = (int*)(A->indices[1][1]);
+  float* restrict A_vals = (float*)(A->vals);
+  int B1_dimension = (int)(B->dimensions[0]);
+  int* restrict B2_pos = (int*)(B->indices[1][0]);
+  int* restrict B2_crd = (int*)(B->indices[1][1]);
+  float* restrict B_vals = (float*)(B->vals);
+
+  int32_t* restrict A2_attr_nnz = 0;
+
+  int32_t A2_attr_nnz_capacity = A1_dimension;
+  A2_attr_nnz = (int32_t*)calloc(A2_attr_nnz_capacity, sizeof(int32_t));
+  for (int32_t i = 0; i < B1_dimension; i++) {
+    for (int32_t pB2 = B2_pos[i]; pB2 < B2_pos[(i + 1)]; pB2++) {
+      int32_t j = B2_crd[pB2];
+      A2_attr_nnz[j] = A2_attr_nnz[j] + (int32_t)1;
+    }
+  }
+  A2_pos = (int32_t*)malloc(sizeof(int32_t) * (A1_dimension + 1));
+  A2_pos[0] = 0;
+  for (int32_t jA = 0; jA < A1_dimension; jA++) {
+    A2_pos[jA + 1] = A2_pos[jA] + A2_attr_nnz[jA];
+  }
+  A2_crd = (int32_t*)malloc(sizeof(int32_t) * A2_pos[A1_dimension]);
+  int32_t A_capacity = A2_pos[A1_dimension];
+  A_vals = (float*)malloc(sizeof(float) * A_capacity);
+  for (int32_t i = 0; i < B1_dimension; i++) {
+    for (int32_t pB2 = B2_pos[i]; pB2 < B2_pos[(i + 1)]; pB2++) {
+      int32_t j = B2_crd[pB2];
+      int32_t pA2 = A2_pos[j];
+      A2_pos[j] = A2_pos[j] + 1;
+      A2_crd[pA2] = i;
+      A_vals[pA2] = B_vals[pB2];
+    }
+  }
+
+  free(A2_attr_nnz);
+  for (int32_t p = 0; p < A1_dimension; p++) {
+    A2_pos[A1_dimension - p] = A2_pos[(A1_dimension - p - 1)];
+  }
+  A2_pos[0] = 0;
+
+  A->indices[1][0] = (int32_t*)(A2_pos);
+  A->indices[1][1] = (int32_t*)(A2_crd);
+  A->vals = (float*)A_vals;
+  return 0;
+}
+
+double CSC_CSR_T_hash_nonfuse(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C_noT, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
+  // std::cout << "Capacity: " << w_cap << std::endl;
   for (int i = 0; i < warmup; i++) {
-    compute(A,B,C,D,w_cap);
+    compute(C_noT,A,B,w_cap);
+    transpose(C,C_noT);
     if (bench) {
-      free(A->vals);
-      free(A->indices[1][0]);
-      free(A->indices[1][1]);
+      free(C_noT->vals);
+      free(C_noT->indices[1][0]);
+      free(C_noT->indices[1][1]);
+      free(C->vals);
+      free(C->indices[1][0]);
+      free(C->indices[1][1]);
     }
   }
   double start = clock();
   for (int i = 0; i < repeat; i++) {
-    compute(A,B,C,D,w_cap);
+    compute(C_noT,A,B,w_cap);
+    transpose(C,C_noT);
     if (bench && i != repeat - 1) {
-      free(A->vals);
-      free(A->indices[1][0]);
-      free(A->indices[1][1]);
+      free(C_noT->vals);
+      free(C_noT->indices[1][0]);
+      free(C_noT->indices[1][1]);
+      free(C->vals);
+      free(C->indices[1][0]);
+      free(C->indices[1][1]);
     }
   }
   double end = clock();
   double duration = (double)(end - start) / (CLOCKS_PER_SEC * repeat);
   if (print) {
-    std::cout << "A: " << std::endl;
-    print_taco_tensor_COO(A);
+    print_taco_tensor_DC(A);
+    print_taco_tensor_DC(B);
+    print_taco_tensor_DC(C);
   }
   return duration;
 }

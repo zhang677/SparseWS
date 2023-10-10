@@ -12,7 +12,7 @@ trans_root=/home/zgh23/code/SparseWS/data/shift/
 # get the binary name from exec
 # e.g. bench-coord-cf
 exec_name=$(echo $exec | cut -d '/' -f 6)
-output=/home/zgh23/code/SparseWS/data/ablation/CSC_CSR_T/all/$exec_name.csv
+output=/home/zgh23/code/SparseWS/data/ablation/CSC_CSR_T/nofuse/$exec_name.csv
 # name is the name of the matrix, e.g. powerlaw_5000_10_0.1.mtx
 # Store the "powerlaw" part in the variable "type"
 type=$(echo $name | cut -d '_' -f 1)

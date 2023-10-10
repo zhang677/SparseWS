@@ -708,6 +708,32 @@ taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, v
   return csft;
 }
 
+splatt_kruskal gen_factor_matrices(int nfactors, splatt_csf* tt) {
+  // OS Error: Invalid instruction
+  double *cpd_opts = splatt_default_opts();
+  cpd_opts[SPLATT_OPTION_NTHREADS] = omp_get_num_threads();
+  cpd_opts[SPLATT_OPTION_NITER] = 0;
+  cpd_opts[SPLATT_OPTION_CSF_ALLOC] = SPLATT_CSF_ONEMODE;
+  cpd_opts[SPLATT_OPTION_TILE] = SPLATT_NOTILE;
+  cpd_opts[SPLATT_OPTION_VERBOSITY] = SPLATT_VERBOSITY_NONE;
+
+  splatt_kruskal factored;
+  splatt_cpd_als(tt, nfactors, cpd_opts, &factored);
+
+  for (int i = 0; i < nfactors; i++) {
+    factored.lambda[i] = (float)(i + 1);
+    for (int k = 0; k < tt->nmodes; k++) {
+      for (int j = 0; j < factored.dims[k]; j++) {
+        factored.factors[k][i + j * nfactors] = (float)rand() / RAND_MAX;
+      }
+    }
+  }
+  
+  splatt_free_opts(cpd_opts);
+
+  return factored;
+}
+
 void read_mtx_csr_keep_value(const char *filename, int &nrow, int &ncol, int &nnz,
                               std::vector<int> &csr_indptr_buffer,
                               std::vector<int> &csr_indices_buffer,
@@ -844,6 +870,96 @@ void read_mtx_coo(const char *filename, int &nrow, int &ncol, int &nnz,
     coo_value_buffer.push_back(std::get<2>(coords[index[i]]));
   }
   fclose(f);
+}
+
+void read_txt_coo3(const char *filename, 
+                  std::vector<int> &coo_0_buffer,
+                  std::vector<int> &coo_1_buffer,
+                  std::vector<int> &coo_2_buffer,
+                  std::vector<float> &coo_value_buffer,
+                  bool one_based = true) {
+  FILE *f;
+
+  if ((f = fopen(filename, "r")) == NULL) {
+    printf("File %s not found", filename);
+    exit(EXIT_FAILURE);
+  }
+  
+  std::vector<std::tuple<int, int, int, float>> coords;
+  int r0_id, r1_id, r2_id;
+  float val;
+  while (fscanf(f, "%d", &r0_id) != EOF) {
+    fscanf(f, "%d", &r1_id);
+    fscanf(f, "%d", &r2_id);
+    fscanf(f, "%f", &val);
+    // mtx format is 1-based
+    if (one_based) {
+      coords.push_back(std::make_tuple(r0_id - 1, r1_id - 1, r2_id - 1, val));
+    } else {
+      coords.push_back(std::make_tuple(r0_id, r1_id, r2_id, val));
+    }
+  }
+  int nnz = coords.size();
+
+  std::vector<int> index;
+  boost::range::push_back(index, boost::irange(0, nnz));
+  std::sort(index.begin(), index.end(),
+        [&coords](int i1, int i2) {
+          if (std::get<0>(coords[i1]) != std::get<0>(coords[i2])) {
+            if (std::get<0>(coords[i1]) < std::get<0>(coords[i2])) {
+              return true;
+            } else {
+              return false;
+            }
+          } else if (std::get<1>(coords[i1]) != std::get<1>(coords[i2])) {
+            if (std::get<1>(coords[i1]) < std::get<1>(coords[i2])) {
+              return true;
+            } else {
+              return false;
+            }
+          } else if (std::get<2>(coords[i1]) != std::get<2>(coords[i2])) {
+            if (std::get<2>(coords[i1]) < std::get<2>(coords[i2])) {
+              return true;
+            } else {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        });
+  
+  coo_0_buffer.clear();
+  coo_1_buffer.clear();
+  coo_2_buffer.clear();
+  coo_value_buffer.clear();
+  
+  for (int64_t i = 0; i < nnz; i++) {
+    coo_0_buffer.push_back(std::get<0>(coords[index[i]]));
+    coo_1_buffer.push_back(std::get<1>(coords[index[i]]));
+    coo_2_buffer.push_back(std::get<2>(coords[index[i]]));
+    coo_value_buffer.push_back(std::get<3>(coords[index[i]]));
+  }
+  fclose(f);
+}
+
+void init_taco_tensor_COO(taco_tensor_t* t, vector<int> dims, vector<int> mode_ordering) {
+  int order = dims.size();
+  t->order = order; 
+  t->mode_ordering = new int32_t[order];
+  for (int i = 0; i < order; ++i) {
+    t->mode_ordering[i] = mode_ordering[i];
+  }
+  t->dimensions = new int32_t[order];
+  for (int i = 0; i < order; ++i) {
+    t->dimensions[i] = dims[i];
+  }
+  t->indices = new int32_t**[order];
+  for (int i = 0; i <= order; ++i) {
+    t->indices[i] = new int32_t*[1];
+  }
+    t->indices[0][0] = new int32_t[1];
+    t->indices[0][0][0] = t->dimensions[mode_ordering[0]];
+    t->vals_size = 0;
 }
 
 void print_taco_tensor_CSF(taco_tensor_t* t) {

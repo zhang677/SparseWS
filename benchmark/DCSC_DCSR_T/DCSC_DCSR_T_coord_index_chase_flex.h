@@ -247,9 +247,9 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
     int32_t jB0 = B1_crd[jB];
     int32_t j = TACO_MIN(jA0, jB0);
     if (jA0 == j && jB0 == j) {
-      for (int32_t iA = A2_pos[j]; iA < A2_pos[j+1]; iA++) {
+      for (int32_t iA = A2_pos[jA]; iA < A2_pos[jA+1]; iA++) {
         int32_t i = A2_crd[iA];
-        for (int32_t kB = B2_pos[j]; kB < B2_pos[j+1]; kB++) {
+        for (int32_t kB = B2_pos[jB]; kB < B2_pos[jB+1]; kB++) {
           int32_t k = B2_crd[kB];
           w_point[0] = k;
           w_point[1] = i; // Transpose
