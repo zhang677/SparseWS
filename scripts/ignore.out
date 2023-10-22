@@ -1,0 +1,5 @@
+{
+   ignore_libcrypto_conditional_jump_errors
+   Memcheck:Leak
+   obj:/usr/lib/llvm-11/lib/libomp.so.5
+}

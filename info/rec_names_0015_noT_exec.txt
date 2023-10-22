@@ -1,0 +1,9 @@
+rec_100_1000_375_25000_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_1000_10000_38_2500_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_625_6250_60_4000_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_1250_12500_30_2000_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_250_2500_150_10000_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_400_4000_94_6250_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_2500_25000_15_1000_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_200_2000_188_12500_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash
+rec_500_5000_75_5000_0.0015,/home/zgh23/code/SparseWS/bench-noT-hash

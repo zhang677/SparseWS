@@ -2,6 +2,7 @@
 #include <math.h> 
 
 const int32_t INTMAX = 2147483647;
+const int32_t CAPMAX = 1 << 30;
 
 typedef struct {
   int32_t crd[2];
@@ -131,12 +132,12 @@ int Sort(void* array, size_t size, bool rev) {
 
 // Hash function transforms a crd to a hash key
 int32_t hash_func(const int32_t crd, const int32_t tsize) {
-    return crd < 0 ? ((INTMAX+crd) % tsize) : (crd % tsize);
+    return crd < 0 ? (abs(INTMAX+crd) % tsize) : (crd % tsize);
 }
 
 void copy_buffer(HashTable* accumulator) {
   //std::cout << "Copy buffer " << accumulator->numel << ": ";
-  Timer t;
+  // Timer t;
   int current_size = 0;
   int32_t* values_size = accumulator->values_size;
   wspace** values = accumulator->values;
@@ -193,7 +194,7 @@ int32_t TryInsert_hash(bool* insertFail, HashTable* accumulator, int32_t* crds, 
 void init_hashTable(HashTable* w, int32_t w_accumulator_capacity) {
   w->numel = 0;
   w->table_size = w_accumulator_capacity;
-  w->buffer_capacity = w_accumulator_capacity * 2;
+  w->buffer_capacity = w_accumulator_capacity * 2 < 0? CAPMAX : w_accumulator_capacity * 2;
   w->values = (wspace**)malloc(sizeof(wspace*) * w->table_size);
   w->values_size = (int32_t*)calloc(w->table_size, sizeof(int32_t));
   w->values_capacity = (int32_t*)calloc(w->table_size, sizeof(int32_t));

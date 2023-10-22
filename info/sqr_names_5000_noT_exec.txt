@@ -1,0 +1,16 @@
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-hash
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-hash-flex
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-hash-flex-mt
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-hash-mt
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-coord-c
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-coord-cf
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-bucket
+rec_250_2500_400_40000_0,/home/zgh23/code/SparseWS/bench-noT-row-taco
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-hash
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-hash-flex
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-hash-flex-mt
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-hash-mt
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-coord-c
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-coord-cf
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-bucket
+rec_4000_40000_25_2500_0,/home/zgh23/code/SparseWS/bench-noT-row-taco

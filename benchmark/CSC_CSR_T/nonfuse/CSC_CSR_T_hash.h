@@ -229,7 +229,7 @@ void refresh_wspace(HashTable* w) {
   // outfile2.close();
 }
 
-int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
+int compute_nofuse(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
   int C1_dimension = (int)(C->dimensions[0]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
   int* restrict C2_crd = (int*)(C->indices[1][1]);
@@ -402,7 +402,7 @@ int transpose(taco_tensor_t *A, taco_tensor_t *B) {
 double CSC_CSR_T_hash_nonfuse(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C_noT, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
   // std::cout << "Capacity: " << w_cap << std::endl;
   for (int i = 0; i < warmup; i++) {
-    compute(C_noT,A,B,w_cap);
+    compute_nofuse(C_noT,A,B,w_cap);
     transpose(C,C_noT);
     if (bench) {
       free(C_noT->vals);
@@ -415,7 +415,7 @@ double CSC_CSR_T_hash_nonfuse(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t*
   }
   double start = clock();
   for (int i = 0; i < repeat; i++) {
-    compute(C_noT,A,B,w_cap);
+    compute_nofuse(C_noT,A,B,w_cap);
     transpose(C,C_noT);
     if (bench && i != repeat - 1) {
       free(C_noT->vals);

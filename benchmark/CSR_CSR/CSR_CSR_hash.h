@@ -22,17 +22,20 @@ int refresh_times = 0;
 
 void print_hashTable(HashTable* table) {
   for (int i=0; i<table->table_size; i++) {
-    std::cout<<"indices["<<i<<"] = "<<table->values_size[i]<<", values["<<i<<"] = ";
-    for (int j=0; j<table->values_size[i]; j++) {
-      std::cout<<"("<<table->values[i][j].crd[0]<<","<<table->values[i][j].crd[1]<<","<<table->values[i][j].val<<"),";
+      if (table->values_size[i] > 0) {
+      std::cout<<"indices["<<i<<"] = "<<table->values_size[i]<<", values["<<i<<"] = ";
+      for (int j=0; j<table->values_size[i]; j++) {
+        std::cout<<"("<<table->values[i][j].crd[0]<<","<<table->values[i][j].crd[1]<<","<<table->values[i][j].val<<"),";
+      }
+      std::cout<<std::endl;
     }
-    std::cout<<std::endl;
-  }
-  std::cout<<"Buffer: ";
-  for (int i = 0; i < table->numel; i++) {
-    std::cout<<"("<<table->buffer[i].crd[0]<<","<<table->buffer[i].crd[1]<<","<<table->buffer[i].val<<"),";
   }
   std::cout<<std::endl;
+  // std::cout<<"Buffer: ";
+  // for (int i = 0; i < table->numel; i++) {
+  //   std::cout<<"("<<table->buffer[i].crd[0]<<","<<table->buffer[i].crd[1]<<","<<table->buffer[i].val<<"),";
+  // }
+  // std::cout<<std::endl;
 }
 
 int w_cmp(const void *b, const void *a) {
@@ -130,7 +133,7 @@ int Sort(void* array, size_t size, bool rev) {
 
 // Hash function transforms a crd to a hash key
 int32_t hash_func(const int32_t crd, const int32_t tsize) {
-    return crd < 0 ? ((INTMAX+crd) % tsize) : (crd % tsize);
+    return crd < 0 ? (abs(INTMAX+crd) % tsize) : (crd % tsize);
 }
 
 void copy_buffer(HashTable* accumulator) {
@@ -346,17 +349,27 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
   return 0;
 }
 
-double CSR_CSR_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t bench, bool print = false) {
+double CSR_CSR_hash(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
   // std::cout << "Capacity: " << w_cap << std::endl;
   for (int i = 0; i < warmup; i++) {
     compute(C,A,B,w_cap);
+    if (bench) {
+      free(C->vals);
+      free(C->indices[1][0]);
+      free(C->indices[1][1]);
+    }
   }
-  Timer timer;
-  timer.reset();
-  for (int i = 0; i < bench; i++) {
+  double start = clock();
+  for (int i = 0; i < repeat; i++) {
     compute(C,A,B,w_cap);
+    if (bench && i != repeat - 1) {
+      free(C->vals);
+      free(C->indices[1][0]);
+      free(C->indices[1][1]);
+    }
   }
-  double duration = timer.elapsed() / bench;
+  double end = clock();
+  double duration = (double)(end - start) / (CLOCKS_PER_SEC * repeat);
   if (print) {
     print_taco_tensor_DC(A);
     print_taco_tensor_DC(B);

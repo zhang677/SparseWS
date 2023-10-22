@@ -105,17 +105,27 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B) {
   return 0;
 }
 
-double CSR_CSR_taco(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32_t warmup, int32_t bench, bool print = false) {
+double CSR_CSR_taco(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
   // C(i,k) = A(i,j) * B(j,k); C: CSR, A: CSR, B: CSR
   for (int i = 0; i < warmup; i++) {
     compute(C,A,B);
+    if (bench) {
+      free(C->vals);
+      free(C->indices[1][0]);
+      free(C->indices[1][1]);
+    }
   }
   Timer timer;
   timer.reset();
-  for (int i = 0; i < bench; i++) {
+  for (int i = 0; i < repeat; i++) {
     compute(C,A,B);
+    if (bench && i != repeat - 1) {
+      free(C->vals);
+      free(C->indices[1][0]);
+      free(C->indices[1][1]);
+    }
   }
-  double duration = timer.elapsed() / bench;
+  double duration = timer.elapsed() / repeat;
   if (print) {
     print_taco_tensor_DC(A);
     print_taco_tensor_DC(B);

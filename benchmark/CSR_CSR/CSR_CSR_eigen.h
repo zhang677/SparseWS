@@ -1,16 +1,26 @@
 #include "../../utils/dataloader.h"
 #include "../../utils/lib.h"
 
-double CSR_CSR_Eigen(EigenCSR& A, EigenCSR& B, EigenCSR& C, int32_t warmup, int32_t bench, bool print = false) {
+double CSR_CSR_Eigen(EigenCSR& A, EigenCSR& B, EigenCSR& C, int32_t warmup, int32_t repeat,bool bench = false, bool print = false) {
   for (int i = 0; i < warmup; i++) {
     C = A * B;
+    if (bench) {
+      EigenCSR tmp;
+      C = tmp;
+    }
   }
-  Timer timer;
-  timer.reset();
-  for (int i = 0; i < bench; i++) {
+  //auto start = std::chrono::high_resolution_clock::now();
+  double start = clock();
+  for (int i = 0; i < repeat; i++) {
     C = A * B;
+    if (bench) {
+      EigenCSR tmp;
+      C = tmp;
+    }
   }
-  double duration = timer.elapsed() / bench;
+  //auto end = std::chrono::high_resolution_clock::now();
+  double end = clock();
+  double duration = (double)(end - start) / (CLOCKS_PER_SEC * repeat);
   if (print) {
     print_eigen_csr(A);
     print_eigen_csr(B);
