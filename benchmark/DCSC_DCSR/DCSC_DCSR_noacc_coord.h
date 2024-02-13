@@ -1,7 +1,7 @@
 #include "../../utils/dataloader.h"
 #include <math.h> 
 
-int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
+int compute_coord(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accumulator_capacity) {
   int C1_dimension = (int)(C->dimensions[0]);
   int B2_dimension = (int)(B->dimensions[1]);
   int* restrict C2_pos = (int*)(C->indices[1][0]);
@@ -122,7 +122,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
 double DCSC_DCSR_noacc_coord(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* C, int32_t w_cap, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
   // std::cout << "Capacity: " << w_cap << std::endl;
   for (int i = 0; i < warmup; i++) {
-    compute(C,A,B,w_cap);
+    compute_coord(C,A,B,w_cap);
     if (bench) {
       free(C->vals);
       free(C->indices[1][0]);
@@ -131,7 +131,7 @@ double DCSC_DCSR_noacc_coord(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t* 
   }
   double start = clock();
   for (int i = 0; i < repeat; i++) {
-    compute(C,A,B,w_cap);
+    compute_coord(C,A,B,w_cap);
     if (bench && i != repeat - 1) {
       free(C->vals);
       free(C->indices[1][0]);

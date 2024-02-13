@@ -3,8 +3,8 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Sort csv by names')
 parser.add_argument('--filename', default="/home/zgh23/code/SparseWS/info/test_matrix_names_merged_sorted.txt", type=str, help='Read path')
-parser.add_argument('--table_name', default="/home/zgh23/code/SparseWS/data/results/CSR_CSR/bench-taco-60.csv", type=str, help='Read path')
-parser.add_argument('--new_table_name', default="/home/zgh23/code/SparseWS/data/results/CSR_CSR/bench-taco-60-sorted.csv", type=str, help='Read path')
+parser.add_argument('--table_name', default="/home/zgh23/code/SparseWS/data/results/CSR_CSR/bench-gust-taco.csv", type=str, help='Read path')
+parser.add_argument('--new_table_name', default="/home/zgh23/code/SparseWS/data/results/CSR_CSR/bench-gust-taco-sorted.csv", type=str, help='Read path')
 args = parser.parse_args()
 filename = args.filename # "/home/zgh23/code/SparseWS/info/test_matrix_names_merged_sorted.txt"
 table_name = args.table_name # "/home/zgh23/code/SparseWS/data/results/CSR_CSR/bench-taco-60.csv"

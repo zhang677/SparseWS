@@ -2,9 +2,10 @@
 matrix_root=/scratch/zgh23/sparse_mat
 matrix_t_root=/scratch/zgh23/sparse_mat_t
 matrix_name=$1
-profile_root=/home/zgh23/code/SparseWS/data/profile/memory
+# profile_root=/home/zgh23/code/SparseWS/data/profile/memory
+profile_root=/home/zgh23/code/SparseWS/data/profile/CSC_CSR/cc/memory
 profile_name=hash_$matrix_name
-exec=/home/zgh23/code/SparseWS/memory-hash
+exec=/home/zgh23/code/SparseWS/memory-cc-noT-HASH
 matrixA=$matrix_root/$matrix_name.mtx
 matrixB=$matrix_t_root/$matrix_name-st.mtx
 valgrind --tool=massif --xtree-memory=full --xtree-memory-file=$profile_root/$profile_name.kcg --massif-out-file=$profile_root/$profile_name.out  $exec $matrixA $matrixB

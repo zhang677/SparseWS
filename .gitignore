@@ -1,4 +1,6 @@
 test-*
 test.o
 bench-*
+check-*
+memory-*
 /data

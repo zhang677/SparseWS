@@ -91,7 +91,12 @@ void read_mtx_csr(const char *filename, int &nrow, int &ncol, int &nnz,
       exit(EXIT_FAILURE);
     } else {
       fscanf(f, "%d", &col_id);
-      fscanf(f, "%f", &dummy);
+      if (mm_is_pattern(matcode)) {
+        // random value between 0 and 1
+        dummy = 1.0;
+      } else {
+        fscanf(f, "%f", &dummy);
+      }
       // mtx format is 1-based
       if (one_based) {
         coords.push_back(std::make_tuple(row_id - 1, col_id - 1));
@@ -771,7 +776,11 @@ void read_mtx_csr_keep_value(const char *filename, int &nrow, int &ncol, int &nn
       exit(EXIT_FAILURE);
     } else {
       fscanf(f, "%d", &col_id);
-      fscanf(f, "%f", &val);
+      if (mm_is_pattern(matcode)) {
+        val = 1.0f;
+      } else {
+        fscanf(f, "%f", &val);
+      }
       // mtx format is 1-based
       if (one_based) {
         coords.push_back(std::make_tuple(row_id - 1, col_id - 1, val));

@@ -27,7 +27,7 @@ def read_each_line(input_file, output_file):
             for line in f:
                 line = line.split()
                 val = line[-1]
-                line = [str(int(x) - 1) for x in line[:-1]]
+                line = [str(int(x) + 1) for x in line[:-1]]
                 line.append(val)
                 line = ' '.join(line)
                 g.write(line + '\n')
@@ -50,7 +50,7 @@ def count_each_mode(input_file):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input', type=str, default='/scratch/zgh23/sparse_ten/nell-2.tns')
-    parser.add_argument('--output', type=str, default='/scratch/zgh23/sparse_ten/nell-2-zero.tns')
+    parser.add_argument('--output', type=str)
     args = parser.parse_args()
 
     # read_all_lines(args.input, args.output)

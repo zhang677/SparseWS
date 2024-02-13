@@ -7,12 +7,17 @@ BOOST_INC = -I /home/zgh23/tools/boost_1_83_0
 SPLATT_INC = -I /home/zgh23/code/splatt/include
 SPLATT_LIB = -L /home/zgh23/code/splatt/build/Linux-x86_64/lib
 WCAP = 0
+ALGPREFIX = SPWS
+ALGNAME = COORDCF
+ALG = ${ALGPREFIX}${ALGNAME}
+CPPFILE = bench_taco_outer_cc_noT
+EXEPREFIX = bench-cc-noT
 
 test: test.o Makefile
-	g++ -o check-cc-noT-noacc -g -DCAP=${WCAP} ${EIGEN_INC} ${BOOST_INC} test.o ${SPLATT_INC}  -Wl,-Bstatic ${SPLATT_LIB} -lsplatt -Wl,-Bdynamic -liomp5 -lpthread -lm -ldl -L/home/zgh23/code/OpenBLAS/lib/lib -lopenblas 
+	g++ -o ${EXEPREFIX}-${ALGNAME} -g -DCAP=${WCAP} -D${ALG} ${EIGEN_INC} ${BOOST_INC} test.o ${SPLATT_INC}  -Wl,-Bstatic ${SPLATT_LIB} -lsplatt -Wl,-Bdynamic -liomp5 -lpthread -lm -ldl -L/home/zgh23/code/OpenBLAS/lib/lib -lopenblas 
 
 test.o: ./utils/lib.h Makefile
-	g++ -o test.o -g -c -fpermissive -std=c++17 -pthread ${EIGEN_INC} ${BOOST_INC} ${SPLATT_INC} -DCAP=${WCAP} noacc_csc_csr.cpp
+	g++ -o test.o -g -c -fpermissive -std=c++17 -pthread ${EIGEN_INC} ${BOOST_INC} ${SPLATT_INC} -DCAP=${WCAP} -D${ALG} ${CPPFILE}.cpp
 
 .PHONY: clean run
 

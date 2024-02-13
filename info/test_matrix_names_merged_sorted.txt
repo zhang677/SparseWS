@@ -41,7 +41,7 @@ bayer10
 cyl6
 ch7-6-b4
 psse0
-TSOPF_FS_b300_c1
+2D_27628_bjtcai
 c-55
 scagr7-2r
 stat96v3

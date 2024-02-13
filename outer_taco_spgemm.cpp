@@ -81,10 +81,8 @@ int main(int argc, char** argv) {
   const string filename1 = (argc > 1) ? argv[1] : "./data/test5.mtx";
   const string filename2 = (argc > 2) ? argv[2] : "./data/test5.mtx";
   const int repeat = (argc > 3) ? stoi(argv[3]) : 10;
-  const int w_cap = (argc > 4) ? stoi(argv[4]) : 16;
-  const int verbose = (argc > 5) ? stoi(argv[5]) : 0;
-  const string result_name = (argc > 6) ? argv[6] : "./data/test.csv";
-  benchmark_eigen_taco(filename1, filename2, repeat, result_name);
-  // check_eigen_taco(filename1, filename2);
+  const string result_name = (argc > 4) ? argv[4] : "./data/test.csv";
+  // benchmark_eigen_taco(filename1, filename2, repeat, result_name);
+  check_eigen_taco(filename1, filename2);
   return 0;
 }

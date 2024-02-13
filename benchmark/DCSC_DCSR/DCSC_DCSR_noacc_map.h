@@ -1,13 +1,11 @@
 #include "../../utils/dataloader.h"
 #include <math.h> 
 
-#define w_order 2
-
 struct index_t {
-    int32_t crd[w_order];
+    int32_t crd[2];
 
     bool operator < (const index_t& other) const {
-        for (int i = 0; i < w_order; ++i) {
+        for (int i = 0; i < 2; ++i) {
             if (crd[i] != other.crd[i]) {
                 return crd[i] < other.crd[i];
             }
