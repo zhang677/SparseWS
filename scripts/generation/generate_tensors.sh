@@ -4,17 +4,22 @@ FOLDER="/home/zgh23/code/SparseWS/data/origin/tensors/"
 # I=532
 # k=7791085 # 7791085 # 3895543 # 
 # l=7791085 # 7791085 # 3895543 #
-K=1504
-L=42390
-k=300
-l=8479
+# K=1504
+# L=42390
+# k=300
+# l=8479
+K=23343790
+L=23344784
+k=4668758
+l=4668758
+I=166
 J=$1 # 4 # 4 # 8
 j=$2 # 2 # 1 # 3
-Tname=facebook
-Dname="/scratch/zgh23/sparse_ten/D-$Tname-$J.txt"
-Cname="/scratch/zgh23/sparse_ten/C-$Tname-$J.txt"
-Dmtx="/scratch/zgh23/sparse_ten/D-$Tname-$J.mtx"
-Cmtx="/scratch/zgh23/sparse_ten/C-$Tname-$J.mtx"
+Tname=$3
+Dname="/scratch/zgh23/sparse_ten/spws_generated/D-$Tname-$J.txt"
+Cname="/scratch/zgh23/sparse_ten/spws_generated/C-$Tname-$J.txt"
+Dmtx="/scratch/zgh23/sparse_ten/spws_generated/D-$Tname-$J.mtx"
+Cmtx="/scratch/zgh23/sparse_ten/spws_generated/C-$Tname-$J.mtx"
 ./generate_rec $K $J $k $j $FOLDER 0
 cp ${FOLDER}rec\_$k\_$K\_$j\_$J\_0.mtx $Cname
 # Remove the first 2 lines 
