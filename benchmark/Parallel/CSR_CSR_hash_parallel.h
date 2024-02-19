@@ -266,7 +266,9 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
   w_insertFail[0] = 0;
 //   int32_t* restrict w_point = 0;
 //   w_point = (int32_t*)malloc(sizeof(int32_t) * 2);
-  omp_set_num_threads(32);
+  // omp_set_num_threads(32);
+  printf("TACO threads = {%d}\n", omp_get_max_threads());
+
   #pragma omp parallel for schedule(runtime)
   for (int32_t i = 0; i < A1_dimension; i++) {
     // w_point[0] = i;
@@ -278,20 +280,20 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
         int32_t k = B2_crd[kB];
         // w_point[1] = k;
         //std::cout << "TryInsert: " << w_point[0] << " , " << w_point[1] << std::endl;
-        // # pragma omp critical {
-        TryInsert_hash(w_insertFail, &w_accumulator, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
-        
-        # pragma omp critical
-        if (w_insertFail[0]) {
-            if (w_accumulator.numel + w_all_size > w_all_capacity) {
-                w_all_capacity = w_accumulator.numel + w_all_size;
-                w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-                w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-                w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
-            }
-            w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
-            refresh_wspace(&w_accumulator);
-            TryInsert_hash(w_insertFail, &w_accumulator, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
+        #pragma omp critical 
+        {
+          TryInsert_hash(w_insertFail, &w_accumulator, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
+          if (w_insertFail[0]) {
+              if (w_accumulator.numel + w_all_size > w_all_capacity) {
+                  w_all_capacity = w_accumulator.numel + w_all_size;
+                  w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+                  w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+                  w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+              }
+              w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
+              refresh_wspace(&w_accumulator);
+              TryInsert_hash(w_insertFail, &w_accumulator, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
+          }
         }
       }
     }

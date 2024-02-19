@@ -14,10 +14,10 @@ CPPFILE = bench_taco_outer_cc_noT
 EXEPREFIX = bench-cc-noT
 
 test: test.o Makefile
-	g++ -o ${EXEPREFIX}-${ALGNAME} -g -DCAP=${WCAP} -D${ALG} ${EIGEN_INC} ${BOOST_INC} test.o ${SPLATT_INC}  -Wl,-Bstatic ${SPLATT_LIB} -lsplatt -Wl,-Bdynamic -liomp5 -lpthread -lm -ldl -L/home/zgh23/code/OpenBLAS/lib/lib -lopenblas 
+	g++ -o ${EXEPREFIX}-${ALGNAME} -g -fopenmp -DCAP=${WCAP} -D${ALG} ${EIGEN_INC} ${BOOST_INC} test.o ${SPLATT_INC}  -Wl,-Bstatic ${SPLATT_LIB} -lsplatt -Wl,-Bdynamic -liomp5 -lpthread -lm -ldl -L/home/zgh23/code/OpenBLAS/lib/lib -lopenblas 
 
 test.o: ./utils/lib.h Makefile
-	g++ -o test.o -g -c -fpermissive -std=c++17 -pthread ${EIGEN_INC} ${BOOST_INC} ${SPLATT_INC} -DCAP=${WCAP} -D${ALG} ${CPPFILE}.cpp
+	g++ -o test.o -g -c -fpermissive -std=c++17 -pthread -fopenmp ${EIGEN_INC} ${BOOST_INC} ${SPLATT_INC} -DCAP=${WCAP} -D${ALG} ${CPPFILE}.cpp
 
 .PHONY: clean run
 
