@@ -155,6 +155,7 @@ void copy_buffer(HashTable* accumulator) {
 int32_t TryInsert_hash(int32_t* insertFail, HashTable* accumulator, int32_t i, int32_t k, float val, int32_t dimension) {
   if (accumulator->numel == accumulator->buffer_capacity) {
     copy_buffer(accumulator);
+    #pragma omp atomic write
     *insertFail = 1;
     return Sort(accumulator->buffer, accumulator->buffer_capacity, false);
   }
@@ -261,40 +262,45 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
 
 //   int32_t* restrict w_point = 0;
 //   w_point = (int32_t*)malloc(sizeof(int32_t) * 2);
+  omp_set_max_active_levels(5);
+
+  // printf("TACO threads = {%d}\n", omp_get_max_threads());
+
+
+  #pragma omp parallel num_threads( 2 )
+  {
   int32_t w_insertFail_h[CAP] = {0};
   int32_t flag_sets = CAP;
-  omp_set_max_active_levels(2);
-  printf("TACO threads = {%d}\n", omp_get_max_threads());
-
-
-  #pragma omp parallel sections num_threads( 2 )
-  {
-  #pragma omp section
-  #pragma omp parallel num_threads( CAP )
-  {
+  if (omp_get_thread_num() == 0) {
+    omp_set_num_threads(CAP); 
+    // #pragma omp parallel num_threads(CAP)
+    // {
     int thread_id = omp_get_thread_num();
-    #pragma for schedule(runtime)
-    for (int32_t i = 0; i < A1_dimension; i++) {
+    for (int32_t i = thread_id; i < A1_dimension; i+=CAP) {
       int32_t iA = i;
       for (int32_t jA = A2_pos[i]; jA < A2_pos[(i + 1)]; jA++) {
         int32_t j = A2_crd[jA];
         int32_t jB = j;
         for (int32_t kB = B2_pos[j]; kB < B2_pos[(j + 1)]; kB++) {
           int32_t k = B2_crd[kB];
+          printf("Thread %d trying to insert\n", thread_id);
           TryInsert_hash(w_insertFail_h + thread_id, w_accumulator_h + thread_id, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
           if (w_insertFail_h[thread_id] == 0) continue;
-          printf("Thread %d insertion fails\n", thread_id);
+          printf("Thread %d waiting\n", thread_id);
           while (w_insertFail_h[thread_id] == 1) {;}
+          refresh_wspace(w_accumulator_h + i);
           TryInsert_hash(w_insertFail_h + thread_id, w_accumulator_h + thread_id, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
         }
       }
     }
-    
+    // printf("Thread %d done\n", thread_id);
     if (w_accumulator_h[thread_id].numel > 0) {
       copy_buffer(w_accumulator_h + thread_id);
       Sort(w_accumulator_h[thread_id].buffer, w_accumulator_h[thread_id].numel, false);
+      #pragma omp atomic write
       w_insertFail_h[thread_id] = 2;
     } else {
+      #pragma omp atomic write
       w_insertFail_h[thread_id] = 3;
     }
     while(!w_insertFail_h[thread_id] == 4) {;}
@@ -307,11 +313,10 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
     free(w_accumulator_h[thread_id].values_capacity);
     free(w_accumulator_h[thread_id].buffer);
     free(w_accumulator_h[thread_id].values);
+    // }
   }
-
-  #pragma omp section
-  #pragma omp parallel num_threads( 1 )
-  { 
+  else {
+    omp_set_num_threads(1);
     int32_t w_all_capacity = w_accumulator_capacity;
     int32_t w_all_size = 0;
     int32_t* restrict w1_pos = 0;
@@ -325,6 +330,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
     
     while(flag_sets > 0) {
       for (int i = 0; i < CAP; i++) {
+        printf("Thread %d flag: %d\n", i, w_insertFail_h[i]);
         if (w_insertFail_h[i] == 1) {
           printf("Merge Thread %d\n", i);
           if (w_accumulator_h[i].numel + w_all_size > w_all_capacity) {
@@ -334,13 +340,15 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
               w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
               w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
           }
+          printf("Numel: %d\n", w_accumulator_h[i].numel);
           printf("Pre w_all_size: %d\n", w_all_size);
           w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_h + i);
           printf("Post w_all_size: %d\n", w_all_size);
-          refresh_wspace(w_accumulator_h + i);
+          #pragma omp atomic write
           w_insertFail_h[i] = 0;
           printf("Thread %d merge done\n", i);
         } else if (w_insertFail_h[i] == 2) {
+          printf("Clean Thread %d\n", i);
           if (w_accumulator_h[i].numel + w_all_size > w_all_capacity) {
               w_all_capacity = w_accumulator_h[i].numel + w_all_size;
               w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
@@ -349,9 +357,11 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
           }
           w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_h + i);
           flag_sets --;
+          #pragma omp atomic write
           w_insertFail_h[i] = 4;
         } else if (w_insertFail_h[i] == 3) {
           flag_sets --;
+          #pragma omp atomic write
           w_insertFail_h[i] = 4;
         }
       }
