@@ -1,6 +1,10 @@
 #include "benchmark/CSR_CSR/CSR_CSR_eigen.h"
 #include "benchmark/Parallel/DCSC_DCSR_hash_parallel.h"
 
+#ifndef CAP
+ #define CAP 4
+#endif
+
 void check_eigen_hash_outer_CC_noT(const string filename1, const string filename2, bool verbose) {
     taco_tensor_t C;
     EigenCSR C_true;
@@ -34,6 +38,7 @@ void check_eigen_hash_outer_CC_noT(const string filename1, const string filename
 
     std::cout << "Hash" << std::endl;
     int w_cap = pow(2,int(log2(nnz))); // heuristic
+    omp_set_num_threads(CAP+1);
     DCSC_DCSR_hash(&A, &B, &C, w_cap, 0, 1, false);
     std::cout << "Eigen" << std::endl;
     CSR_CSR_Eigen(A_use, B_true, C_true, 0, 1, false);

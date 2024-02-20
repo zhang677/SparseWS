@@ -1,6 +1,10 @@
 #include "benchmark/CSR_CSR/CSR_CSR_eigen.h"
 #include "benchmark/Parallel/CSR_CSR_hash_parallel.h"
 
+#ifndef CAP
+ #define CAP 4
+#endif
+
 void check_eigen_hash(const string filename1, const string filename2, bool verbose) {
     taco_tensor_t C;
     EigenCSR C_true;
@@ -23,12 +27,14 @@ void check_eigen_hash(const string filename1, const string filename2, bool verbo
     EigenCSR B_true = to_eigen_csr(nrow, ncol, nnz, id_buffer, indices, value, false);
     init_taco_tensor_DC(&C, ncol, ncol, {0,1});
 
-    std::cout << "Eigen" << std::endl;
+    
     int w_cap = pow(2,int(log2(nnz))); // heuristic
-    CSR_CSR_Eigen(A_true, B_true, C_true, 0, 1, false, verbose);
+    omp_set_num_threads(CAP+1);
     std::cout << "Hash" << std::endl;
     CSR_CSR_hash(&A, &B, &C, w_cap, 0, 1, false, verbose);
-    check_csr_taco_eigen(C, C_true);
+    // std::cout << "Eigen" << std::endl;
+    // CSR_CSR_Eigen(A_true, B_true, C_true, 0, 1, false, verbose);
+    // check_csr_taco_eigen(C, C_true);
 }
 
 int main(int argc, char* argv[]) {

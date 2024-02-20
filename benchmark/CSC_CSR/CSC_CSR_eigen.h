@@ -2,7 +2,6 @@
 #include "../../utils/lib.h"
 
 double CSC_CSR_Eigen(EigenCSC& A, EigenCSR& B, EigenCSR& C, int32_t warmup, int32_t repeat, bool bench = false, bool print = false) {
-  printf("Eigen threads: %d\n", Eigen::nbThreads());
   for (int i = 0; i < warmup; i++) {
     C = A * B;
     if (bench) {

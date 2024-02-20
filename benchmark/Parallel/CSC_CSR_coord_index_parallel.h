@@ -223,7 +223,6 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_cap)
   bool w_insertFail = false; 
 //   int32_t w_point[w_order];
   int32_t w1_pos[w_order];
-  printf("TACO threads: %d\n", omp_get_max_threads());
   #pragma omp parallel for schedule(runtime)
   for (int32_t j = 0; j < B1_dimension; j++) {
     for (int32_t iA = A2_pos[j]; iA < A2_pos[j+1]; iA++) {

@@ -31,7 +31,8 @@ void check_eigen_coord_outer_noT(const string filename1, const string filename2,
     indices.clear();
     value.clear();
 
-
+    printf("TACO threads: %d\n", omp_get_max_threads());
+    printf("Eigen threads = {%d}\n", Eigen::nbThreads());
     clock_t start, finish;
     double duration_eigen, duration_taco;
     const int warmup = 5;
