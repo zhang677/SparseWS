@@ -1,5 +1,10 @@
+#if defined(SPWSPARHASH)
+    #include "benchmark/Parallel/CSR_CSR_hash_parallel.h"
+#elif defined(SPWSPARHASHSEQ)
+    #include "benchmark/Parallel/CSR_CSR_hash_sequential.h"
+#else
+#endif
 #include "benchmark/CSR_CSR/CSR_CSR_eigen.h"
-#include "benchmark/Parallel/CSR_CSR_hash_parallel.h"
 
 #ifndef CAP
  #define CAP 4
@@ -29,12 +34,12 @@ void check_eigen_hash(const string filename1, const string filename2, bool verbo
 
     
     int w_cap = pow(2,int(log2(nnz))); // heuristic
-    // omp_set_num_threads(CAP+1);
+    omp_set_num_threads(CAP+1);
     std::cout << "Hash" << std::endl;
     CSR_CSR_hash(&A, &B, &C, w_cap, 0, 1, false, verbose);
-    // std::cout << "Eigen" << std::endl;
-    // CSR_CSR_Eigen(A_true, B_true, C_true, 0, 1, false, verbose);
-    // check_csr_taco_eigen(C, C_true);
+    std::cout << "Eigen" << std::endl;
+    CSR_CSR_Eigen(A_true, B_true, C_true, 0, 1, false, verbose);
+    check_csr_taco_eigen(C, C_true);
 }
 
 int main(int argc, char* argv[]) {

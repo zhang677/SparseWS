@@ -32,6 +32,7 @@ void bench_eigen_hash(const string filename1, const string filename2, const int 
     indices.clear();
     value.clear();
 
+    omp_set_num_threads(CAP+1);
     printf("TACO threads: %d\n", omp_get_max_threads());
     printf("Eigen threads = {%d}\n", Eigen::nbThreads());
     clock_t start, finish;
