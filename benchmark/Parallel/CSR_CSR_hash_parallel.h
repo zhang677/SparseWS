@@ -338,6 +338,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
       for (int i = 0; i < CAP; i++) {
         if (w_insertFail_h[i] == 1) {
           // printf("Thread %d merges Thread %d\n", omp_get_thread_num(), i);
+          // Atomic acquire the w_insertFail_h[i]
           if (w_accumulator_h[i].numel + w_all_size > w_all_capacity) {
               w_all_capacity = w_accumulator_h[i].numel + w_all_size;
               // printf("w_all_capacity: %d\n", w_all_capacity);
@@ -350,6 +351,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
           // printf("Post w_all_size: %d\n", w_all_size);
           // #pragma omp atomic write
           w_insertFail_h[i] = 0;
+          // Atomic release the w_insertFail_h[i]
           // printf("Thread %d merge done\n", i);
         } else if (w_insertFail_h[i] == 2) {
           // printf("Thread %d merges Thread %d\n", omp_get_thread_num(), i);
