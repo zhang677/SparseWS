@@ -8,3 +8,5 @@ make clean
 make CPPFILE=bench_coord_index_parallel_outer_noT EXEPREFIX=bench-outer-noT ALGNAME=PARCOORDC
 make clean
 make CPPFILE=bench_hash_parallel_row_noT EXEPREFIX=bench-row-noT ALGNAME=PARHASH
+make clean
+make CPPFILE=bench_hash_row_noT EXEPREFIX=bench-row-noT ALGNAME=HASH

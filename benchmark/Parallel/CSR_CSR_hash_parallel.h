@@ -284,7 +284,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
           TryInsert_hash(w_insertFail_h + thread_id, w_accumulator_h + thread_id, i, k, (A_vals[jA] * B_vals[kB]), B2_dimension);
           if (w_accumulator_h[thread_id].numel == w_accumulator_h[thread_id].buffer_capacity){
             // printf("Thread %d insertion fails\n", omp_get_thread_num());
-            #pragma omp atomic write
+            // #pragma omp atomic write
             w_insertFail_h[thread_id] = 1;
             while (w_insertFail_h[thread_id] == 1) {;}
             // printf("Thread %d is refreshing\n", thread_id);
@@ -299,7 +299,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
       copy_buffer(w_accumulator_h + thread_id);
       Sort(w_accumulator_h[thread_id].buffer, w_accumulator_h[thread_id].numel, false);
       // printf("Thread %d finishes sorting\n", thread_id);
-      #pragma omp atomic write
+      // #pragma omp atomic write
       w_insertFail_h[thread_id] = 2;
     } else {
       #pragma omp atomic write
@@ -348,7 +348,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
           // printf("Pre w_all_size: %d\n", w_all_size);
           w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_h + i);
           // printf("Post w_all_size: %d\n", w_all_size);
-          #pragma omp atomic write
+          // #pragma omp atomic write
           w_insertFail_h[i] = 0;
           // printf("Thread %d merge done\n", i);
         } else if (w_insertFail_h[i] == 2) {
@@ -364,11 +364,11 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
           w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, w_accumulator_h + i);
           flag_sets --;
           // printf("Post w_all_size: %d\n", w_all_size);
-          #pragma omp atomic write
+          // #pragma omp atomic write
           w_insertFail_h[i] = 4;
         } else if (w_insertFail_h[i] == 3) {
           flag_sets --;
-          #pragma omp atomic write
+          // #pragma omp atomic write
           w_insertFail_h[i] = 4;
         }
       }

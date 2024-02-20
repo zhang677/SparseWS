@@ -266,7 +266,7 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
   w_insertFail[0] = 0;
   int32_t* restrict w_point = 0;
   w_point = (int32_t*)malloc(sizeof(int32_t) * 2);
-  printf("w_all_capacity: %d\n", w_all_capacity);
+//   printf("w_all_capacity: %d\n", w_all_capacity);
   for (int32_t i = 0; i < A1_dimension; i++) {
     w_point[0] = i;
     int32_t iA = i;
@@ -285,14 +285,14 @@ int compute(taco_tensor_t *C, taco_tensor_t *A, taco_tensor_t *B, int32_t w_accu
         if (w_insertFail[0]) {
           if (w_accumulator.numel + w_all_size > w_all_capacity) {
             w_all_capacity = w_accumulator.numel + w_all_size;
-            printf("w_all_capacity: %d\n", w_all_capacity);
+            // printf("w_all_capacity: %d\n", w_all_capacity);
             w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
             w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
             w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
           }
-          printf("Pre w_all_size: %d\n", w_all_size);
+        //   printf("Pre w_all_size: %d\n", w_all_size);
           w_all_size = Merge_hash(w1_crd, w2_crd, w_vals, w_all_size, &w_accumulator);
-          printf("Post w_all_size: %d\n", w_all_size);
+        //   printf("Post w_all_size: %d\n", w_all_size);
           refresh_wspace(&w_accumulator);
           TryInsert_hash(w_insertFail, &w_accumulator, w_point, (A_vals[jA] * B_vals[kB]), B2_dimension);
         }
