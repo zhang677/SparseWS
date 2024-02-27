@@ -277,49 +277,50 @@ int compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, int32_t w_accu
   w_point = (int32_t*)malloc(sizeof(int32_t) * 3);
   int32_t restrict w_dims[2] = {A2_dimension, A3_dimension};
 
-  int32_t kB = B1_pos[0];
-  int32_t pB1_end = B1_pos[1];
-  int32_t kC = C1_pos[0];
-  int32_t pC1_end = C1_pos[1];
 
-  while (kB < pB1_end && kC < pC1_end) {
-    int32_t kB0 = B1_crd[kB];
-    int32_t kC0 = C1_crd[kC];
-    int32_t k = TACO_MIN(kB0,kC0);
-    if (kB0 == k && kC0 == k) {
-      for (int32_t iB = B2_pos[kB]; iB < B2_pos[(kB + 1)]; iB++) {
-        int32_t i = B2_crd[iB];
-        w_point[0] = i;
-        for (int32_t jB = B3_pos[iB]; jB < B3_pos[(iB + 1)]; jB++) {
-          int32_t j = B3_crd[jB];
-          w_point[1] = j;
-          for (int32_t lC = C2_pos[kC]; lC < C2_pos[(kC + 1)]; lC++) {
-            int32_t l = C2_crd[lC];
-            w_point[2] = l;
-            TryInsert_hash(w_insertFail, &w_accumulator, w_point, (B_vals[jB] * C_vals[lC]), w_dims);
-            
-            if (w_insertFail[0]) {
-                if (w_accumulator.numel + w_all_size > w_all_capacity) {
-                    w_all_capacity = w_accumulator.numel + w_all_size;
-                    w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
-                    w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
-                    w3_crd = (int32_t*)realloc(w3_crd, sizeof(int32_t) * w_all_capacity);
-                    w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+  for (int32_t kB = B1_pos[0]; kB < B1_pos[1]; kB++) {
+    int32_t k = B1_crd[kB];
+    int32_t iB = B2_pos[kB];
+    int32_t pB2_end = B2_pos[(kB + 1)];
+    int32_t iC = C1_pos[0];
+    int32_t pC1_end = C1_pos[1];
+    w_point[0] = k;
+    while (iB < pB2_end && iC < pC1_end) {
+        int32_t iB0 = B2_crd[iB];
+        int32_t iC0 = C1_crd[iC];
+        int32_t i = TACO_MIN(iB0,iC0);
+        if (iB0 == i && iC0 == i) {
+            for (int32_t jB = B3_pos[iB]; jB < B3_pos[(iB + 1)]; jB++) {
+                int32_t j = B3_crd[jB];
+                int32_t jA = k * A2_dimension + j;
+                w_point[1] = j;
+                for (int32_t lC = C2_pos[iC]; lC < C2_pos[(iC + 1)]; lC++) {
+                    int32_t l = C2_crd[lC];
+                    int32_t lA = jA * A3_dimension + l;
+                    w_point[2] = l;
+                    TryInsert_hash(w_insertFail, &w_accumulator, w_point, (B_vals[jB] * C_vals[lC]), w_dims);
+                    
+                    if (w_insertFail[0]) {
+                        if (w_accumulator.numel + w_all_size > w_all_capacity) {
+                            w_all_capacity = w_accumulator.numel + w_all_size;
+                            w1_crd = (int32_t*)realloc(w1_crd, sizeof(int32_t) * w_all_capacity);
+                            w2_crd = (int32_t*)realloc(w2_crd, sizeof(int32_t) * w_all_capacity);
+                            w3_crd = (int32_t*)realloc(w3_crd, sizeof(int32_t) * w_all_capacity);
+                            w_vals = (float*)realloc(w_vals, sizeof(float) * w_all_capacity);
+                        }
+                        w_all_size = Merge_hash(w1_crd, w2_crd, w3_crd, w_vals, w_all_size, &w_accumulator);
+                        // print_array(w1_crd, w_all_size);
+                        // print_array(w2_crd, w_all_size);
+                        // print_array(w_vals, w_all_size);
+                        refresh_wspace(&w_accumulator);
+                        TryInsert_hash(w_insertFail, &w_accumulator, w_point, (B_vals[jB] * C_vals[lC]), w_dims);
+                    }
                 }
-                w_all_size = Merge_hash(w1_crd, w2_crd, w3_crd, w_vals, w_all_size, &w_accumulator);
-                // print_array(w1_crd, w_all_size);
-                // print_array(w2_crd, w_all_size);
-                // print_array(w_vals, w_all_size);
-                refresh_wspace(&w_accumulator);
-                TryInsert_hash(w_insertFail, &w_accumulator, w_point, (B_vals[jB] * C_vals[lC]), w_dims);
             }
-            // print_hashTable(&w_accumulator);
-          }
         }
-      }
+        iB += (int32_t)(iB0 == i);
+        iC += (int32_t)(iC0 == i);
     }
-    kB += (int32_t)(kB0 == k);
-    kC += (int32_t)(kC0 == k);
   }
   
   if (w_accumulator.numel > 0) {

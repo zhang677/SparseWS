@@ -962,7 +962,7 @@ void init_taco_tensor_COO(taco_tensor_t* t, vector<int> dims, vector<int> mode_o
   for (int i = 0; i < order; ++i) {
     t->dimensions[i] = dims[i];
   }
-  t->indices = new int32_t**[order];
+  t->indices = new int32_t**[order+1];
   for (int i = 0; i <= order; ++i) {
     t->indices[i] = new int32_t*[1];
   }
