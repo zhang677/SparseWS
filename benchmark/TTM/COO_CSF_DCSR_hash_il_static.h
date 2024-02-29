@@ -277,8 +277,8 @@ int compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, int32_t w_accu
   w_insertFail[0] = 0;
   int32_t* restrict w_point = 0;
   w_point = (int32_t*)malloc(sizeof(int32_t) * 3);
-  // int32_t restrict w_dims[2] = {A2_dimension, 4};
-  int32_t restrict w_dims[2] = {A2_dimension, A3_dimension};
+  int32_t restrict w_dims[2] = {A2_dimension, 4};
+  // int32_t restrict w_dims[2] = {A2_dimension, A3_dimension};
 
   // int iterations = 0;
   // std::vector<int> w_all_caps;

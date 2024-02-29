@@ -35,6 +35,7 @@ def read_each_line(input_file, output_file):
 def count_each_mode(input_file):
     order = 3
     dim = [0,0,0]
+    nnz = 0
     with open(input_file, 'r') as f:
         for line in f:
             line = line.split()
@@ -42,9 +43,12 @@ def count_each_mode(input_file):
             line = [int(x) for x in line[:-1]]
             for i in range(order):
                 dim[i] = max(dim[i], line[i])
+            nnz += 1
     print(input_file)
     print("Max elements: ")
     print(dim)
+    print("Number of non-zero elements: ")
+    print(nnz)
 
 
 if __name__ == '__main__':
@@ -54,6 +58,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # read_all_lines(args.input, args.output)
-    # read_each_line(args.input, args.output)
-    count_each_mode(args.input)
+    read_each_line(args.input, args.output)
+    # count_each_mode(args.input)
 
