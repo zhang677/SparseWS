@@ -58,6 +58,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # read_all_lines(args.input, args.output)
-    read_each_line(args.input, args.output)
-    # count_each_mode(args.input)
+    # read_each_line(args.input, args.output)
+    count_each_mode(args.input)
 
