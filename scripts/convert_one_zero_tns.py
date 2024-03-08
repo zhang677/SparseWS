@@ -50,6 +50,18 @@ def count_each_mode(input_file):
     print("Number of non-zero elements: ")
     print(nnz)
 
+def check_repeat_line(input_file):
+    prev = []
+    with open(input_file, 'r') as f:
+        for line in f:
+            line = line.split()
+            line = [int(x) for x in line[:-1]]
+            if line == prev:
+                print("Repeat line: ")
+                print(line)
+                return
+            prev = line
+            
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -59,5 +71,6 @@ if __name__ == '__main__':
 
     # read_all_lines(args.input, args.output)
     # read_each_line(args.input, args.output)
-    count_each_mode(args.input)
+    # count_each_mode(args.input)
+    check_repeat_line(args.input)
 
