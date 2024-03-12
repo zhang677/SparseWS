@@ -31,7 +31,8 @@ void bench_mttkrp_dcsf_dcsr_dcsr_hash(const string filename1, const string filen
     vector<string> result2;
     boost::split(result2, result[result.size()-1], boost::is_any_of("."));
 
-    int w_cap = pow(2,int(log2(dims[2] * ncol * 0.05))); // heuristic
+    // int w_cap = pow(2,int(log2(dims[2] * ncol * 0.05))); // heuristic
+    int w_cap = pow(2,int(log2(dims[2] * ncol * 0.1)));
     printf("w_cap: %d\n", w_cap);
     double duration_taco = COO_CSF_DCSR_DCSR_hash(&A, &B, &C, &D, w_cap, warmup, repeat, true /* in bench*/, false/* verbose*/);
     

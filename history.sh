@@ -7,3 +7,4 @@ make CPPFILE=count_iteration_outer_cc_noT EXEPREFIX=count-outer-cc-noT ALGNAME=F
 make CPPFILE=bench_coord_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=COORDC
 make CPPFILE=bench_coord_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=COORDCF
 make CPPFILE=bench_bucket_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=BUCKET
+make CPPFILE=bench_hash_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=HASH
