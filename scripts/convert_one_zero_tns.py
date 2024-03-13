@@ -71,6 +71,6 @@ if __name__ == '__main__':
 
     # read_all_lines(args.input, args.output)
     # read_each_line(args.input, args.output)
-    # count_each_mode(args.input)
-    check_repeat_line(args.input)
+    count_each_mode(args.input)
+    # check_repeat_line(args.input)
 

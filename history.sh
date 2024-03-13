@@ -8,3 +8,6 @@ make CPPFILE=bench_coord_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=COORDC
 make CPPFILE=bench_coord_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=COORDCF
 make CPPFILE=bench_bucket_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=BUCKET
 make CPPFILE=bench_hash_mttkrp EXEPREFIX=bench-mttkrp ALGNAME=HASH
+make CPPFILE=bench_coord_ttm EXEPREFIX=bench-ttm ALGNAME=COORD
+make CPPFILE=check_coord_hash_ttm EXEPREFIX=check-ttm ALGNAME=COORDHASH
+make CPPFILE=check_coord_bucket_ttm EXEPREFIX=check-ttm ALGNAME=COORDBUCKET

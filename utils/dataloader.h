@@ -623,6 +623,16 @@ void check_coo_taco_taco(taco_tensor_t& C, taco_tensor_t& C_true){
   compare_array<float>(C.vals, C_true.vals, nnz);
 }
 
+void check_coo_taco_taco_3d(taco_tensor_t& C, taco_tensor_t& C_true){
+  int nnz = C_true.vals_size;
+  // cout << "row: " << C.indices[0][0][0] << " , " << C_true.indices[0][0][0] << (C.indices[0][0][0] == C_true.indices[0][0][0] ? "True" : "False") << endl;
+  cout << "nnz: " << (C.vals_size == nnz ? "True": "False") << endl;
+  compare_array<int>(C.indices[1][0], C_true.indices[1][0], nnz);
+  compare_array<int>(C.indices[2][0], C_true.indices[2][0], nnz);
+  compare_array<int>(C.indices[3][0], C_true.indices[3][0], nnz);
+  compare_array<float>(C.vals, C_true.vals, nnz);
+}
+
 taco_tensor_t read_tns_csf(const std::string tensor_path, taco_tensor_t& csft, vector<int>& dims) {
   // 
   // sptensor_t * tt;
@@ -1011,6 +1021,15 @@ void print_taco_tensor_COO(taco_tensor_t* t) {
     cout << t->vals[i] << ",";
   }
   cout<<"]"<<endl; 
+}
+
+void store_taco_tensor_coo(const string filename, taco_tensor_t* t) {
+  std::ofstream outfile;
+  outfile.open(filename);
+  for (int i = 0; i < t->vals_size; ++i){
+    outfile << t->indices[1][0][i] << " " << t->indices[2][0][i] << " " << t->indices[3][0][i] << " " << t->vals[i] << std::endl;
+  }
+  outfile.close();
 }
 
 class Timer {

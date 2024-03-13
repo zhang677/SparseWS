@@ -1,18 +1,11 @@
-#if defined(SPWSHASH)
-    #include "benchmark/TTM/COO_CSF_DCSR_hash.h"
-#elif defined(SPWSHASHIL)
-    #include "benchmark/TTM/COO_CSF_DCSR_hash_il.h"
-#elif defined(SPWSHASHILST)
-    #include "benchmark/TTM/COO_CSF_DCSR_hash_il_static.h"
-#else
-#endif
+#include "benchmark/TTM/COO_CSF_DCSR_coord_il.h"
 #include <iostream>
 #include <time.h>
 #include <string>
 #include <fstream>
 using namespace std;
 
-void bench_ttm_dcsf_dcsr_hash(const string filename1, const string filename2, const int repeat, const int warmup, vector<int>& dims, const string& result_name) {
+void bench_ttm_dcsf_dcsr_coord(const string filename1, const string filename2, const int repeat, const int warmup, vector<int>& dims, const string& result_name) {
     taco_tensor_t B;
     read_tns_csf(filename1, B, dims);
     vector<int> indptr;
@@ -38,17 +31,26 @@ void bench_ttm_dcsf_dcsr_hash(const string filename1, const string filename2, co
         init_taco_tensor_COO(&A, {dims[0],dims[1],ncol}, {0,1,2});
     }
     
+    clock_t start, finish;
+    double duration_taco;
 
     vector<string> result;
     boost::split(result, filename1, boost::is_any_of("/"));
     vector<string> result2;
     boost::split(result2, result[result.size()-1], boost::is_any_of("."));
 
-    // int w_cap = pow(2,int(log2(1.0 * dims[1] * 4))); // heuristic
-    int w_cap = pow(2,int(log2(1.0 * dims[1] * ncol * 0.05)));
+    int w_cap = pow(2,int(log2(1.0 * dims[1] * ncol * 0.05))); // heuristic
     printf("w_cap: %d\n", w_cap);
-    double duration_taco = COO_CSF_DCSR_hash(&A, &B, &C, w_cap, warmup, repeat, true/*in bench*/);
-    std::cout << result2[0] << "," << ncol << "," << duration_taco * 1000 << std::endl; // ms
+    for (int i = 0; i < warmup; i++) {
+        COO_CSF_DCSR_coord(&A, &B, &C, w_cap);
+    }
+    start = clock();
+    for (int i = 0; i < repeat; i++) { 
+        COO_CSF_DCSR_coord(&A, &B, &C, w_cap);
+    }
+    finish = clock();
+    duration_taco = (double)(finish - start) / (CLOCKS_PER_SEC * repeat);
+    std::cout << result2[0] << "," << ncol << "," << duration_taco * 1000 << std::endl;
     std::ofstream outfile;
     outfile.open(result_name, std::ios_base::app);
     outfile << result2[0] << "," << ncol << "," << duration_taco * 1000 << std::endl;
@@ -69,7 +71,7 @@ int main(int argc, char* argv[]) {
         dims.push_back(atoi(it.c_str()));
     }
 
-    bench_ttm_dcsf_dcsr_hash(filename1, filename2, repeat, warmup, dims, result_name);
+    bench_ttm_dcsf_dcsr_coord(filename1, filename2, repeat, warmup, dims, result_name);
 
     return 0;
 }
